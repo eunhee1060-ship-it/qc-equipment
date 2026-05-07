@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설비 관리 시스템 | QC팀</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #f4f1ec;
+    --surface: #ffffff;
+    --surface2: #faf8f5;
+    --border: #e0dbd0;
+    --text: #1a1714;
+    --text-muted: #7a7670;
+    --accent: #2a5298;
+    --accent-light: #e8edf7;
+    --ok: #2d6a4f;
+    --ok-bg: #e8f5ee;
+    --warn: #b5451b;
+    --warn-bg: #fdf0ec;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  .app-header {
+    background: var(--accent); color: white; padding: 0 24px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 500; transition: all 0.15s;
+    color: rgba(255,255,255,0.75); background: transparent;
+  }
+  .nav-tab:hover { background: rgba(255,255,255,0.15); color: white; }
+  .nav-tab.active { background: rgba(255,255,255,0.2); color: white; }
+
+  .view { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); }
+  .card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+  .eq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
+  .eq-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+  }
+  .eq-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); border-radius: 10px 0 0 10px; }
+  .eq-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+  .eq-card.status-warn::before { background: var(--warn); }
+  .eq-card-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .eq-card-model { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+  .eq-card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
+  .badge-dept { background: var(--accent-light); color: var(--accent); }
+  .badge-ok { background: var(--ok-bg); color: var(--ok); }
+  .badge-warn { background: var(--warn-bg); color: var(--warn); }
+  .eq-card-date { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .toolbar-left { display: flex; gap: 8px; align-items: center; }
+  .search-box { padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: var(--surface); width: 220px; outline: none; transition: border-color 0.15s; }
+  .search-box:focus { border-color: var(--accent); }
+
+  .btn { padding: 8px 16px; border-radius: 7px; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #1e3e7a; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--surface2); }
+  .btn-danger { background: var(--warn-bg); color: var(--warn); border: 1px solid #f0c0b0; }
+  .btn-danger:hover { background: #fde0d8; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .modal-header h2 { font-size: 16px; font-weight: 700; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .close-btn:hover { background: var(--surface2); }
+
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  label { font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+  input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: var(--surface); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .detail-header { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .detail-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .detail-model { font-size: 13px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 12px; }
+  .detail-meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+  .meta-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .meta-value { font-size: 13px; font-weight: 500; margin-top: 2px; }
+
+  .check-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .check-table th { background: var(--surface2); padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .check-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .check-table tr:last-child td { border-bottom: none; }
+  .check-table tr:hover td { background: var(--surface2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .dot-ok { background: var(--ok); }
+  .dot-warn { background: var(--warn); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat-num { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .inner-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .inner-tab { padding: 8px 16px; border-radius: 6px 6px 0 0; border: none; background: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .inner-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .inner-content { display: none; }
+  .inner-content.active { display: block; }
+
+  .manual-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* QR */
+  .qr-section { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px; }
+
+  /* 로딩 */
+  .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-muted); font-size: 14px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* QR 인쇄용 */
+  .qr-print-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .qr-print-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: white; }
+  .qr-print-name { font-size: 12px; font-weight: 700; text-align: center; }
+  .qr-print-sub { font-size: 10px; color: var(--text-muted); text-align: center; }
+
+  @media print {
+    .app-header, .toolbar, .btn, .nav-tabs { display: none !important; }
+    .view { display: block !important; padding: 0; }
+  }
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .detail-meta-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .nav-tab span { display: none; }
+    .view { padding: 16px; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div>
+    <div style="font-size:16px;font-weight:700;">⚙️ 설비 관리 시스템</div>
+    <div style="font-size:11px;opacity:0.7;">품질관리부 · QC팀</div>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('list')">📋 <span>설비 목록</span></button>
+    <button class="nav-tab" onclick="showView('qr')">📱 <span>QR 관리</span></button>
+    <button class="nav-tab" onclick="showView('admin')">🔧 <span>관리자</span></button>
+  </nav>
+</header>
+
+<!-- 설비 목록 -->
+<div class="view active" id="view-list">
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <input class="search-box" type="text" placeholder="🔍  설비명 검색..." oninput="renderList()" id="search-input">
+    </div>
+    <button class="btn btn-primary" onclick="openAddModal()">＋ 새 설비 등록</button>
+  </div>
+  <div class="eq-grid" id="eq-grid">
+    <div class="loading" style="grid-column:1/-1"><div class="spinner"></div> 데이터 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- QR 관리 -->
+<div class="view" id="view-qr">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">📱 QR 코드 모음 — 출력해서 기기에 붙이세요</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+    </div>
+    <div class="qr-print-grid" id="qr-print-grid">
+      <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
+    </div>
+  </div>
+</div>
+
+<!-- 관리자 -->
+<div class="view" id="view-admin">
+  <div class="card">
+    <div class="card-title">🗑️ 설비 전체 목록 (관리)</div>
+    <div id="admin-eq-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- 설비 상세 -->
+<div class="view" id="view-detail">
+  <div style="margin-bottom:14px;">
+    <button class="btn btn-secondary btn-sm" onclick="showView('list')">← 목록으로</button>
+  </div>
+  <div class="detail-header" id="detail-header"></div>
+  <div class="inner-tabs">
+    <button class="inner-tab active" onclick="showInnerTab('checks',this)">📋 점검 이력</button>
+    <button class="inner-tab" onclick="showInnerTab('manual',this)">📖 사용법</button>
+    <button class="inner-tab" onclick="showInnerTab('info',this)">ℹ️ 기기 정보</button>
+  </div>
+  <div class="inner-content active" id="inner-checks">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="flex:1;margin:0 16px 0 0;">최근 점검 기록</div>
+      <button class="btn btn-primary btn-sm" onclick="openCheckModal()">＋ 점검 기록 추가</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;"><div id="check-log-container"></div></div>
+  </div>
+  <div class="inner-content" id="inner-manual">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="flex:1;margin:0 16px 0 0;">사용법 / 주의사항</div>
+      <button class="btn btn-secondary btn-sm" onclick="openManualEditModal()">✏️ 수정</button>
+    </div>
+    <div class="card"><div class="manual-box" id="manual-content"></div></div>
+  </div>
+  <div class="inner-content" id="inner-info">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="flex:1;margin:0 16px 0 0;">기기 상세 정보</div>
+      <button class="btn btn-secondary btn-sm" onclick="openEditModal()">✏️ 정보 수정</button>
+    </div>
+    <div class="card" id="eq-info-detail"></div>
+  </div>
+</div>
+
+<!-- 모달: 설비 추가/수정 -->
+<div class="modal-overlay" id="modal-eq">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-eq-title">새 설비 등록</h2>
+      <button class="close-btn" onclick="closeModal('modal-eq')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>설비명 *</label><input id="f-name" type="text" placeholder="예: X-rite Color Eye 7000A"></div>
+        <div class="form-group"><label>모델명</label><input id="f-model" type="text" placeholder="예: CE-7000A"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>부서명</label><input id="f-dept" type="text" placeholder="예: 품질관리부 반응QC"></div>
+        <div class="form-group"><label>담당자</label><input id="f-manager" type="text" placeholder="예: 방은희"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>제조사</label><input id="f-maker" type="text" placeholder="예: X-Rite Inc."></div>
+        <div class="form-group"><label>시리얼 번호</label><input id="f-serial" type="text" placeholder="예: XR2024-001"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>도입일</label><input id="f-install" type="date"></div>
+        <div class="form-group"><label>위치</label><input id="f-location" type="text" placeholder="예: QC실 3번 선반"></div>
+      </div>
+      <div class="form-group"><label>사용법 / 주의사항</label><textarea id="f-manual" rows="4" placeholder="예: 측정 전 백색 보정 필수. 렌즈 직접 접촉 금지..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-eq')">취소</button>
+      <button class="btn btn-primary" id="btn-save-eq" onclick="saveEquipment()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 점검 기록 -->
+<div class="modal-overlay" id="modal-check">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>점검 기록 추가</h2>
+      <button class="close-btn" onclick="closeModal('modal-check')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>점검일자 *</label><input id="c-date" type="text" placeholder="예: 2026.05.07"></div>
+        <div class="form-group"><label>담당/확인자 *</label><input id="c-person" type="text" placeholder="예: 방은희"></div>
+      </div>
+      <div class="form-group">
+        <label>기기점검 — 이상소음·진동·소프트웨어 정확성</label>
+        <select id="c-machine">
+          <option value="이상없음">✅ 이상없음</option>
+          <option value="이상있음">⚠️ 이상있음</option>
+          <option value="점검필요">🔧 점검필요</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>청소상태 — 먼지 및 내부오염물질</label>
+        <select id="c-clean">
+          <option value="양호(내부청소함)">✅ 양호(내부청소함)</option>
+          <option value="양호">✅ 양호</option>
+          <option value="미세먼지 다소 있음 → 내부청소함">🧹 미세먼지 있음 → 내부청소함</option>
+          <option value="오염있음 → 내부청소함">🧹 오염있음 → 내부청소함</option>
+          <option value="청소필요">⚠️ 청소필요</option>
+        </select>
+      </div>
+      <div class="form-group"><label>특이사항 메모</label><textarea id="c-memo" rows="3" placeholder="추가 내용이 있으면 입력하세요..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-check')">취소</button>
+      <button class="btn btn-primary" id="btn-save-check" onclick="saveCheck()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 사용법 수정 -->
+<div class="modal-overlay" id="modal-manual">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>사용법 / 주의사항 수정</h2>
+      <button class="close-btn" onclick="closeModal('modal-manual')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>내용</label><textarea id="m-content" rows="10" placeholder="사용법, 주의사항, 보정 주기 등을 자유롭게 입력하세요."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-manual')">취소</button>
+      <button class="btn btn-primary" id="btn-save-manual" onclick="saveManual()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbyf1oYXQYzCyq34A3L4gkzy0riL-yrztPTjGVc2YjbboiU0S00qJlSeBCRoFd87IjLd/exec';
+
+let db = { equipment: [], checks: [] };
+let currentEqId = null;
+let editingEqId = null;
+
+// ===== API =====
+async function apiGet(params) {
+  const url = API + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function apiPost(data) {
+  const res = await fetch(API, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+// ===== INIT =====
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const eqId = params.get('eq');
+
+  const data = await apiGet({ action: 'getAll' });
+  db = data;
+
+  if (eqId) {
+    const eq = db.equipment.find(e => e.id === eqId);
+    if (eq) { openDetail(eqId); return; }
+  }
+  showView('list');
+}
+
+// ===== VIEWS =====
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const idx = ['list','qr','admin'].indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if (name === 'list') { renderStats(); renderList(); }
+  if (name === 'qr') { renderQR(); }
+  if (name === 'admin') { renderAdmin(); }
+}
+
+function showInnerTab(name, btn) {
+  document.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.inner-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('inner-' + name).classList.add('active');
+}
+
+// ===== STATS =====
+function renderStats() {
+  const total = db.equipment.length;
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}`;
+  const recentChecked = new Set(db.checks.filter(c => c.date && c.date.startsWith(thisMonth)).map(c => c.eqId)).size;
+  const totalChecks = db.checks.length;
+  const warnCount = db.checks.filter(c => c.machine && c.machine !== '이상없음').length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${total}</div><div class="stat-label">등록 설비 수</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--ok)">${totalChecks}</div><div class="stat-label">전체 점검 기록</div></div>
+    <div class="stat-card"><div class="stat-num">${recentChecked}</div><div class="stat-label">이번 달 점검 완료</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:${warnCount>0?'var(--warn)':'var(--ok)'}">${warnCount}</div><div class="stat-label">이상 기록 수</div></div>
+  `;
+}
+
+// ===== LIST =====
+function renderList() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const filtered = db.equipment.filter(e => e.name.toLowerCase().includes(q) || (e.dept||'').toLowerCase().includes(q));
+  const grid = document.getElementById('eq-grid');
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>설비가 없어요. 새 설비를 등록해보세요!</p></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(eq => {
+    const eqChecks = db.checks.filter(c => c.eqId === eq.id).sort((a,b) => b.date.localeCompare(a.date));
+    const last = eqChecks[0];
+    const hasWarn = last && last.machine !== '이상없음';
+    return `
+      <div class="eq-card ${hasWarn?'status-warn':''}" onclick="openDetail('${eq.id}')">
+        <div class="eq-card-name">${eq.name}</div>
+        <div class="eq-card-model">${eq.model||'-'} · ${eq.serial||'-'}</div>
+        <div class="eq-card-meta">
+          <span class="badge badge-dept">${eq.dept||'미지정'}</span>
+          ${last ? `<span class="badge ${hasWarn?'badge-warn':'badge-ok'}">${hasWarn?'⚠ 이상':'✓ 정상'}</span>` : '<span class="badge" style="background:#f0f0f0;color:#999">점검전</span>'}
+        </div>
+        <div class="eq-card-date">최근 점검: ${last ? last.date : '—'} ${last ? '· '+last.person : ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== QR =====
+function renderQR() {
+  const grid = document.getElementById('qr-print-grid');
+  if (db.equipment.length === 0) { grid.innerHTML = '<div class="empty-state"><div class="icon">📱</div><p>등록된 설비가 없어요.</p></div>'; return; }
+  grid.innerHTML = db.equipment.map(eq => `
+    <div class="qr-print-card">
+      <div id="qr-${eq.id}"></div>
+      <div class="qr-print-name">${eq.name}</div>
+      <div class="qr-print-sub">${eq.dept||''}</div>
+      <button class="btn btn-secondary btn-sm" onclick="downloadQR('${eq.id}','${eq.name}')">⬇ 저장</button>
+    </div>
+  `).join('');
+
+  db.equipment.forEach(eq => {
+    const url = `${location.origin}${location.pathname}?eq=${eq.id}`;
+    new QRCode(document.getElementById('qr-'+eq.id), {
+      text: url, width: 130, height: 130,
+      colorDark: '#1a1714', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+}
+
+function downloadQR(id, name) {
+  setTimeout(() => {
+    const canvas = document.querySelector(`#qr-${id} canvas`);
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.download = `QR_${name}.png`;
+    a.href = canvas.toDataURL();
+    a.click();
+  }, 300);
+}
+
+// ===== DETAIL =====
+function openDetail(id) {
+  currentEqId = id;
+  const eq = db.equipment.find(e => e.id === id);
+  if (!eq) return;
+
+  const eqChecks = db.checks.filter(c => c.eqId === id).sort((a,b) => b.date.localeCompare(a.date));
+  const last = eqChecks[0];
+
+  document.getElementById('detail-header').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1">
+        <div class="detail-title">${eq.name}</div>
+        <div class="detail-model">${eq.model||''} ${eq.serial?'· SN: '+eq.serial:''}</div>
+        <div class="detail-meta-grid">
+          <div><div class="meta-label">부서</div><div class="meta-value">${eq.dept||'-'}</div></div>
+          <div><div class="meta-label">담당자</div><div class="meta-value">${eq.manager||'-'}</div></div>
+          <div><div class="meta-label">위치</div><div class="meta-value">${eq.location||'-'}</div></div>
+          <div><div class="meta-label">제조사</div><div class="meta-value">${eq.maker||'-'}</div></div>
+          <div><div class="meta-label">도입일</div><div class="meta-value">${eq.install||'-'}</div></div>
+          <div><div class="meta-label">최근 점검</div><div class="meta-value">${last?last.date:'없음'}</div></div>
+        </div>
+      </div>
+      <div class="qr-section" style="min-width:120px;">
+        <div id="detail-qr-${id}"></div>
+        <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${id}</div>
+        <button class="btn btn-secondary btn-sm" onclick="downloadQR('detail-qr-${id}','${eq.name}')">⬇ QR 저장</button>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const el = document.getElementById('detail-qr-'+id);
+    if (el && el.children.length === 0) {
+      new QRCode(el, {
+        text: `${location.origin}${location.pathname}?eq=${id}`,
+        width: 100, height: 100,
+        colorDark: '#1a1714', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  }, 100);
+
+  renderCheckLog();
+  document.getElementById('manual-content').textContent = eq.manual || '사용법이 아직 등록되지 않았어요.';
+  document.getElementById('eq-info-detail').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+      ${[['설비명',eq.name],['모델명',eq.model],['제조사',eq.maker],['시리얼 번호',eq.serial],['부서명',eq.dept],['담당자',eq.manager],['위치',eq.location],['도입일',eq.install]].map(([k,v])=>`
+        <div><div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;">${k}</div><div>${v||'-'}</div></div>
+      `).join('')}
+    </div>
+  `;
+
+  document.querySelectorAll('.inner-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.querySelectorAll('.inner-content').forEach((c,i)=>c.classList.toggle('active',i===0));
+  showView('detail');
+}
+
+function renderCheckLog() {
+  const checks = db.checks.filter(c => c.eqId === currentEqId).sort((a,b) => b.date.localeCompare(a.date));
+  const container = document.getElementById('check-log-container');
+  if (checks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>점검 기록이 없어요.</p></div>`;
+    return;
+  }
+  container.innerHTML = `
+    <table class="check-table">
+      <thead><tr><th>날짜</th><th>기기점검</th><th>청소상태</th><th>담당자</th><th>메모</th><th></th></tr></thead>
+      <tbody>
+        ${checks.map(c => {
+          const ok = c.machine === '이상없음';
+          return `<tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${c.date}</td>
+            <td><span class="dot ${ok?'dot-ok':'dot-warn'}"></span>${c.machine}</td>
+            <td style="font-size:12px;">${c.clean}</td>
+            <td>${c.person}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ===== MODALS =====
+function openAddModal() {
+  editingEqId = null;
+  document.getElementById('modal-eq-title').textContent = '새 설비 등록';
+  ['name','model','dept','manager','maker','serial','location','manual'].forEach(f => document.getElementById('f-'+f).value = '');
+  document.getElementById('f-install').value = '';
+  openModal('modal-eq');
+}
+
+function openEditModal() {
+  const eq = db.equipment.find(e => e.id === currentEqId);
+  if (!eq) return;
+  editingEqId = currentEqId;
+  document.getElementById('modal-eq-title').textContent = '설비 정보 수정';
+  document.getElementById('f-name').value = eq.name||'';
+  document.getElementById('f-model').value = eq.model||'';
+  document.getElementById('f-dept').value = eq.dept||'';
+  document.getElementById('f-manager').value = eq.manager||'';
+  document.getElementById('f-maker').value = eq.maker||'';
+  document.getElementById('f-serial').value = eq.serial||'';
+  document.getElementById('f-install').value = eq.install||'';
+  document.getElementById('f-location').value = eq.location||'';
+  document.getElementById('f-manual').value = eq.manual||'';
+  openModal('modal-eq');
+}
+
+async function saveEquipment() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('설비명을 입력해주세요.'); return; }
+  const btn = document.getElementById('btn-save-eq');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  const data = {
+    name, model: document.getElementById('f-model').value.trim(),
+    dept: document.getElementById('f-dept').value.trim(),
+    manager: document.getElementById('f-manager').value.trim(),
+    maker: document.getElementById('f-maker').value.trim(),
+    serial: document.getElementById('f-serial').value.trim(),
+    install: document.getElementById('f-install').value,
+    location: document.getElementById('f-location').value.trim(),
+    manual: document.getElementById('f-manual').value.trim(),
+  };
+  if (editingEqId) {
+    data.action = 'editEquipment'; data.id = editingEqId;
+    await apiPost(data);
+    const idx = db.equipment.findIndex(e => e.id === editingEqId);
+    db.equipment[idx] = { ...db.equipment[idx], ...data };
+  } else {
+    data.action = 'addEquipment';
+    const res = await apiPost(data);
+    db.equipment.push({ id: res.id, ...data });
+  }
+  btn.textContent = '저장'; btn.disabled = false;
+  closeModal('modal-eq');
+  if (editingEqId) openDetail(editingEqId);
+  else { renderStats(); renderList(); }
+}
+
+function openCheckModal() {
+  const today = new Date();
+  const fmt = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('c-date').value = fmt;
+  document.getElementById('c-person').value = db.equipment.find(e=>e.id===currentEqId)?.manager||'';
+  document.getElementById('c-memo').value = '';
+  document.getElementById('c-machine').selectedIndex = 0;
+  document.getElementById('c-clean').selectedIndex = 0;
+  openModal('modal-check');
+}
+
+async function saveCheck() {
+  const date = document.getElementById('c-date').value.trim();
+  const person = document.getElementById('c-person').value.trim();
+  if (!date || !person) { alert('날짜와 담당자를 입력해주세요.'); return; }
+  const btn = document.getElementById('btn-save-check');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  const data = {
+    action: 'addCheck', eqId: currentEqId, date, person,
+    machine: document.getElementById('c-machine').value,
+    clean: document.getElementById('c-clean').value,
+    memo: document.getElementById('c-memo').value.trim()
+  };
+  const res = await apiPost(data);
+  db.checks.push({ id: res.id || ('c'+Date.now()), ...data });
+  btn.textContent = '저장'; btn.disabled = false;
+  closeModal('modal-check');
+  renderCheckLog();
+  renderStats();
+}
+
+async function deleteCheck(id) {
+  if (!confirm('이 점검 기록을 삭제할까요?')) return;
+  await apiPost({ action: 'deleteCheck', id });
+  db.checks = db.checks.filter(c => c.id !== id);
+  renderCheckLog();
+  renderStats();
+}
+
+function openManualEditModal() {
+  const eq = db.equipment.find(e => e.id === currentEqId);
+  document.getElementById('m-content').value = eq?.manual||'';
+  openModal('modal-manual');
+}
+
+async function saveManual() {
+  const btn = document.getElementById('btn-save-manual');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  const manual = document.getElementById('m-content').value;
+  const eq = db.equipment.find(e => e.id === currentEqId);
+  await apiPost({ action: 'editManual', ...eq, manual });
+  const idx = db.equipment.findIndex(e => e.id === currentEqId);
+  db.equipment[idx].manual = manual;
+  document.getElementById('manual-content').textContent = manual || '사용법이 아직 등록되지 않았어요.';
+  btn.textContent = '저장'; btn.disabled = false;
+  closeModal('modal-manual');
+}
+
+// ===== ADMIN =====
+function renderAdmin() {
+  document.getElementById('admin-eq-list').innerHTML = `
+    <table class="check-table">
+      <thead><tr><th>설비명</th><th>부서</th><th>담당자</th><th>점검 수</th><th>최근 점검</th><th></th></tr></thead>
+      <tbody>
+        ${db.equipment.map(eq => {
+          const checks = db.checks.filter(c => c.eqId === eq.id).sort((a,b) => b.date.localeCompare(a.date));
+          return `<tr>
+            <td><strong>${eq.name}</strong><br><span style="font-size:11px;color:var(--text-muted);">${eq.model||''}</span></td>
+            <td>${eq.dept||'-'}</td><td>${eq.manager||'-'}</td>
+            <td>${checks.length}</td><td style="font-size:12px;">${checks[0]?.date||'-'}</td>
+            <td style="display:flex;gap:4px;">
+              <button class="btn btn-secondary btn-sm" onclick="openDetail('${eq.id}')">보기</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteEquipment('${eq.id}')">삭제</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function deleteEquipment(id) {
+  const eq = db.equipment.find(e => e.id === id);
+  if (!confirm(`"${eq?.name}"을(를) 삭제할까요?\n관련 점검이력도 모두 삭제됩니다.`)) return;
+  await apiPost({ action: 'deleteEquipment', id });
+  db.equipment = db.equipment.filter(e => e.id !== id);
+  db.checks = db.checks.filter(c => c.eqId !== id);
+  renderAdmin();
+  renderStats();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+init();
+</script>
+</body>
+</html>
