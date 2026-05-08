@@ -216,6 +216,7 @@
   <div class="detail-header" id="detail-header"></div>
   <div class="inner-tabs">
     <button class="inner-tab active" onclick="showInnerTab('checks',this)">📋 점검 이력</button>
+    <button class="inner-tab" onclick="showInnerTab('calib',this)">🔬 검교정 이력</button>
     <button class="inner-tab" onclick="showInnerTab('manual',this)">📖 사용법</button>
     <button class="inner-tab" onclick="showInnerTab('info',this)">ℹ️ 기기 정보</button>
   </div>
@@ -226,7 +227,13 @@
     </div>
     <div class="card" style="padding:0;overflow:hidden;"><div id="check-log-container"></div></div>
   </div>
-  <div class="inner-content" id="inner-manual">
+  <div class="inner-content" id="inner-calib">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="flex:1;margin:0 16px 0 0;">검교정 이력</div>
+      <button class="btn btn-primary btn-sm" onclick="openCalibModal()">＋ 검교정 기록 추가</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;"><div id="calib-log-container"></div></div>
+  </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="section-title" style="flex:1;margin:0 16px 0 0;">사용법 / 주의사항</div>
       <button class="btn btn-secondary btn-sm" onclick="openManualEditModal()">✏️ 수정</button>
@@ -263,7 +270,7 @@
         <div class="form-group"><label>시리얼 번호</label><input id="f-serial" type="text" placeholder="예: XR2024-001"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>도입일</label><input id="f-install" type="date"></div>
+        <div class="form-group"><label>구입일</label><input id="f-install" type="date"></div>
         <div class="form-group"><label>위치</label><input id="f-location" type="text" placeholder="예: QC실 3번 선반"></div>
       </div>
       <div class="form-group"><label>사용법 / 주의사항</label><textarea id="f-manual" rows="4" placeholder="예: 측정 전 백색 보정 필수. 렌즈 직접 접촉 금지..."></textarea></div>
@@ -314,6 +321,31 @@
   </div>
 </div>
 
+<!-- 모달: 검교정 기록 -->
+<div class="modal-overlay" id="modal-calib">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>검교정 기록 추가</h2>
+      <button class="close-btn" onclick="closeModal('modal-calib')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>교정일 *</label><input id="cal-date" type="text" placeholder="예: 2026.05.07"></div>
+        <div class="form-group"><label>교정번호</label><input id="cal-num" type="text" placeholder="예: CAL-2026-001"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>차기교정일</label><input id="cal-next" type="text" placeholder="예: 2027.05.07"></div>
+        <div class="form-group"><label>검교정 담당자 *</label><input id="cal-person" type="text" placeholder="예: 방은희"></div>
+      </div>
+      <div class="form-group"><label>특이사항 메모</label><textarea id="cal-memo" rows="3" placeholder="추가 내용이 있으면 입력하세요..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-calib')">취소</button>
+      <button class="btn btn-primary" id="btn-save-calib" onclick="saveCalib()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 모달: 사용법 수정 -->
 <div class="modal-overlay" id="modal-manual">
   <div class="modal">
@@ -334,7 +366,7 @@
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbyf1oYXQYzCyq34A3L4gkzy0riL-yrztPTjGVc2YjbboiU0S00qJlSeBCRoFd87IjLd/exec';
 
-let db = { equipment: [], checks: [] };
+let db = { equipment: [], checks: [], calibs: [] };
 let currentEqId = null;
 let editingEqId = null;
 
@@ -360,6 +392,7 @@ async function init() {
 
   const data = await apiGet({ action: 'getAll' });
   db = data;
+  if (!db.calibs) db.calibs = [];
 
   if (eqId) {
     const eq = db.equipment.find(e => e.id === eqId);
@@ -484,7 +517,7 @@ function openDetail(id) {
           <div><div class="meta-label">담당자</div><div class="meta-value">${eq.manager||'-'}</div></div>
           <div><div class="meta-label">위치</div><div class="meta-value">${eq.location||'-'}</div></div>
           <div><div class="meta-label">제조사</div><div class="meta-value">${eq.maker||'-'}</div></div>
-          <div><div class="meta-label">도입일</div><div class="meta-value">${eq.install||'-'}</div></div>
+          <div><div class="meta-label">구입일</div><div class="meta-value">${eq.install||'-'}</div></div>
           <div><div class="meta-label">최근 점검</div><div class="meta-value">${last?last.date:'없음'}</div></div>
         </div>
       </div>
@@ -509,10 +542,10 @@ function openDetail(id) {
   }, 100);
 
   renderCheckLog();
-  document.getElementById('manual-content').textContent = eq.manual || '사용법이 아직 등록되지 않았어요.';
+  renderCalibLog();.textContent = eq.manual || '사용법이 아직 등록되지 않았어요.';
   document.getElementById('eq-info-detail').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-      ${[['설비명',eq.name],['모델명',eq.model],['제조사',eq.maker],['시리얼 번호',eq.serial],['부서명',eq.dept],['담당자',eq.manager],['위치',eq.location],['도입일',eq.install]].map(([k,v])=>`
+      ${[['설비명',eq.name],['모델명',eq.model],['제조사',eq.maker],['시리얼 번호',eq.serial],['부서명',eq.dept],['담당자',eq.manager],['위치',eq.location],['구입일',eq.install]].map(([k,v])=>`
         <div><div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;">${k}</div><div>${v||'-'}</div></div>
       `).join('')}
     </div>
@@ -644,6 +677,80 @@ async function deleteCheck(id) {
   db.checks = db.checks.filter(c => c.id !== id);
   renderCheckLog();
   renderStats();
+}
+
+// ===== 검교정 =====
+function renderCalibLog() {
+  const calibs = (db.calibs||[]).filter(c => c.eqId === currentEqId).sort((a,b) => b.date.localeCompare(a.date));
+  const container = document.getElementById('calib-log-container');
+  if (!container) return;
+  if (calibs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🔬</div><p>검교정 기록이 없어요.</p></div>`;
+    return;
+  }
+  container.innerHTML = `
+    <table class="check-table">
+      <thead><tr><th>교정일</th><th>교정번호</th><th>차기교정일</th><th>담당자</th><th>메모</th><th></th></tr></thead>
+      <tbody>
+        ${calibs.map(c => `<tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${c.date}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${c.calNum||'-'}</td>
+          <td style="font-size:12px;${isCalibExpiringSoon(c.nextDate)?'color:var(--warn);font-weight:600;':''}">${c.nextDate||'-'}</td>
+          <td>${c.person}</td>
+          <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteCalib('${c.id}')">🗑</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function isCalibExpiringSoon(nextDate) {
+  if (!nextDate) return false;
+  try {
+    const parts = nextDate.split('.');
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const diff = (d - new Date()) / (1000*60*60*24);
+    return diff < 30;
+  } catch(e) { return false; }
+}
+
+function openCalibModal() {
+  const today = new Date();
+  const fmt = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('cal-date').value = fmt;
+  document.getElementById('cal-num').value = '';
+  document.getElementById('cal-next').value = '';
+  document.getElementById('cal-person').value = db.equipment.find(e=>e.id===currentEqId)?.manager||'';
+  document.getElementById('cal-memo').value = '';
+  openModal('modal-calib');
+}
+
+async function saveCalib() {
+  const date = document.getElementById('cal-date').value.trim();
+  const person = document.getElementById('cal-person').value.trim();
+  if (!date || !person) { alert('교정일과 담당자를 입력해주세요.'); return; }
+  const btn = document.getElementById('btn-save-calib');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  const data = {
+    action: 'addCalib', eqId: currentEqId, date, person,
+    calNum: document.getElementById('cal-num').value.trim(),
+    nextDate: document.getElementById('cal-next').value.trim(),
+    memo: document.getElementById('cal-memo').value.trim()
+  };
+  const res = await apiPost(data);
+  if (!db.calibs) db.calibs = [];
+  db.calibs.push({ id: res.id || ('cal'+Date.now()), ...data });
+  btn.textContent = '저장'; btn.disabled = false;
+  closeModal('modal-calib');
+  renderCalibLog();
+}
+
+async function deleteCalib(id) {
+  if (!confirm('이 검교정 기록을 삭제할까요?')) return;
+  await apiPost({ action: 'deleteCalib', id });
+  db.calibs = (db.calibs||[]).filter(c => c.id !== id);
+  renderCalibLog();
 }
 
 function openManualEditModal() {
