@@ -364,7 +364,7 @@
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzgR7QIXSu9TbILBnHRV67txwE-c7rBMU_EjVcqYMRAUqho-M5h_c4hj7dS6MlWzKSe/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyf1oYXQYzCyq34A3L4gkzy0riL-yrztPTjGVc2YjbboiU0S00qJlSeBCRoFd87IjLd/exec';
 
 let db = { equipment: [], checks: [], calibs: [] };
 let currentEqId = null;
@@ -542,7 +542,8 @@ function openDetail(id) {
   }, 100);
 
   renderCheckLog();
-  renderCalibLog();.textContent = eq.manual || '사용법이 아직 등록되지 않았어요.';
+  renderCalibLog();
+  document.getElementById('manual-content').textContent = eq.manual || '사용법이 아직 등록되지 않았어요.';
   document.getElementById('eq-info-detail').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
       ${[['설비명',eq.name],['모델명',eq.model],['제조사',eq.maker],['시리얼 번호',eq.serial],['부서명',eq.dept],['담당자',eq.manager],['위치',eq.location],['구입일',eq.install]].map(([k,v])=>`
