@@ -143,16 +143,37 @@
   .qr-print-name { font-size: 12px; font-weight: 700; text-align: center; }
   .qr-print-sub { font-size: 10px; color: var(--text-muted); text-align: center; }
 
+  /* 모바일 카드형 점검/검교정 이력 */
+  .log-card-list { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .log-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .log-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .log-card-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .log-card-person { font-size: 12px; color: var(--text-muted); }
+  .log-card-body { display: flex; flex-direction: column; gap: 4px; }
+  .log-card-row { display: flex; gap: 8px; font-size: 12px; align-items: flex-start; }
+  .log-card-label { color: var(--text-muted); font-weight: 600; min-width: 70px; flex-shrink: 0; }
+  .log-card-value { flex: 1; }
+  .log-card-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+
   @media print {
     .app-header, .toolbar, .btn, .nav-tabs { display: none !important; }
     .view { display: block !important; padding: 0; }
   }
-  @media (max-width: 600px) {
+  @media (max-width: 700px) {
     .stats-row { grid-template-columns: 1fr 1fr; }
     .detail-meta-grid { grid-template-columns: 1fr 1fr; }
     .form-row { grid-template-columns: 1fr; }
     .nav-tab span { display: none; }
-    .view { padding: 16px; }
+    .nav-tab { padding: 6px 10px; font-size: 12px; }
+    .view { padding: 12px; }
+    .check-table { display: none; }
+    .log-card-list { display: flex; }
+    .detail-header { padding: 14px 16px; }
+    .detail-title { font-size: 17px; }
+    .inner-tab { padding: 7px 10px; font-size: 12px; }
+  }
+  @media (min-width: 701px) {
+    .log-card-list { display: none; }
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -273,6 +294,11 @@
         <div class="form-group"><label>구입일</label><input id="f-install" type="date"></div>
         <div class="form-group"><label>위치</label><input id="f-location" type="text" placeholder="예: QC실 3번 선반"></div>
       </div>
+      <div class="form-group">
+        <label>설비 사진 (구글 드라이브 공유 링크)</label>
+        <input id="f-photo" type="text" placeholder="구글 드라이브 공유 링크 붙여넣기">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📌 구글 드라이브에서 사진 우클릭 → 공유 → 링크 복사 후 붙여넣기</div>
+      </div>
       <div class="form-group"><label>사용법 / 주의사항</label><textarea id="f-manual" rows="4" placeholder="예: 측정 전 백색 보정 필수. 렌즈 직접 접촉 금지..."></textarea></div>
     </div>
     <div class="modal-footer">
@@ -305,10 +331,9 @@
       <div class="form-group">
         <label>청소상태 — 먼지 및 내부오염물질</label>
         <select id="c-clean">
-          <option value="양호(내부청소함)">✅ 양호(내부청소함)</option>
           <option value="양호">✅ 양호</option>
-          <option value="미세먼지 다소 있음 → 내부청소함">🧹 미세먼지 있음 → 내부청소함</option>
-          <option value="오염있음 → 내부청소함">🧹 오염있음 → 내부청소함</option>
+          <option value="미세먼지 있음">🧹 미세먼지 있음</option>
+          <option value="오염있음">🧹 오염있음</option>
           <option value="청소필요">⚠️ 청소필요</option>
         </select>
       </div>
@@ -325,7 +350,7 @@
 <div class="modal-overlay" id="modal-calib">
   <div class="modal">
     <div class="modal-header">
-      <h2>검교정 기록 추가</h2>
+      <h2 id="modal-calib-title">검교정 기록 추가</h2>
       <button class="close-btn" onclick="closeModal('modal-calib')">✕</button>
     </div>
     <div class="modal-body">
@@ -520,6 +545,7 @@ function openDetail(id) {
           <div><div class="meta-label">구입일</div><div class="meta-value">${eq.install||'-'}</div></div>
           <div><div class="meta-label">최근 점검</div><div class="meta-value">${last?last.date:'없음'}</div></div>
         </div>
+        ${eq.photo ? `<div style="margin-top:12px;"><img src="${convertDriveLink(eq.photo)}" alt="설비 사진" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid var(--border);object-fit:cover;" onerror="this.style.display='none'"></div>` : ''}
       </div>
       <div class="qr-section" style="min-width:120px;">
         <div id="detail-qr-${id}"></div>
@@ -564,31 +590,64 @@ function renderCheckLog() {
     container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>점검 기록이 없어요.</p></div>`;
     return;
   }
+  const ok = c => c.machine === '이상없음';
   container.innerHTML = `
     <table class="check-table">
       <thead><tr><th>날짜</th><th>기기점검</th><th>청소상태</th><th>담당자</th><th>메모</th><th></th></tr></thead>
       <tbody>
-        ${checks.map(c => {
-          const ok = c.machine === '이상없음';
-          return `<tr>
-            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${c.date}</td>
-            <td><span class="dot ${ok?'dot-ok':'dot-warn'}"></span>${c.machine}</td>
-            <td style="font-size:12px;">${c.clean}</td>
-            <td>${c.person}</td>
-            <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button></td>
-          </tr>`;
-        }).join('')}
+        ${checks.map(c => `<tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${c.date}</td>
+          <td><span class="dot ${ok(c)?'dot-ok':'dot-warn'}"></span>${c.machine}</td>
+          <td style="font-size:12px;">${c.clean}</td>
+          <td>${c.person}</td>
+          <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button></td>
+        </tr>`).join('')}
       </tbody>
     </table>
+    <div class="log-card-list">
+      ${checks.map(c => `
+        <div class="log-card">
+          <div class="log-card-header">
+            <span class="log-card-date">${c.date}</span>
+            <span class="log-card-person">👤 ${c.person}</span>
+          </div>
+          <div class="log-card-body">
+            <div class="log-card-row">
+              <span class="log-card-label">기기점검</span>
+              <span class="log-card-value"><span class="dot ${ok(c)?'dot-ok':'dot-warn'}"></span>${c.machine}</span>
+            </div>
+            <div class="log-card-row">
+              <span class="log-card-label">청소상태</span>
+              <span class="log-card-value">${c.clean}</span>
+            </div>
+            ${c.memo ? `<div class="log-card-row"><span class="log-card-label">메모</span><span class="log-card-value" style="color:var(--text-muted)">${c.memo}</span></div>` : ''}
+          </div>
+          <div class="log-card-actions">
+            <button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑 삭제</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
 // ===== MODALS =====
+function convertDriveLink(url) {
+  // https://drive.google.com/file/d/FILE_ID/view → 직접 이미지 URL로 변환
+  if (!url) return '';
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w600`;
+  // 공유 링크 형식 ?id=FILE_ID
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return `https://drive.google.com/thumbnail?id=${m2[1]}&sz=w600`;
+  return url;
+}
+
 function openAddModal() {
   editingEqId = null;
   document.getElementById('modal-eq-title').textContent = '새 설비 등록';
-  ['name','model','dept','manager','maker','serial','location','manual'].forEach(f => document.getElementById('f-'+f).value = '');
+  ['name','model','dept','manager','maker','serial','location','manual','photo'].forEach(f => document.getElementById('f-'+f).value = '');
   document.getElementById('f-install').value = '';
   openModal('modal-eq');
 }
@@ -607,6 +666,7 @@ function openEditModal() {
   document.getElementById('f-install').value = eq.install||'';
   document.getElementById('f-location').value = eq.location||'';
   document.getElementById('f-manual').value = eq.manual||'';
+  document.getElementById('f-photo').value = eq.photo||'';
   openModal('modal-eq');
 }
 
@@ -624,6 +684,7 @@ async function saveEquipment() {
     install: document.getElementById('f-install').value,
     location: document.getElementById('f-location').value.trim(),
     manual: document.getElementById('f-manual').value.trim(),
+    photo: document.getElementById('f-photo').value.trim(),
   };
   if (editingEqId) {
     data.action = 'editEquipment'; data.id = editingEqId;
@@ -681,6 +742,8 @@ async function deleteCheck(id) {
 }
 
 // ===== 검교정 =====
+let editingCalibId = null;
+
 function renderCalibLog() {
   const calibs = (db.calibs||[]).filter(c => c.eqId === currentEqId).sort((a,b) => b.date.localeCompare(a.date));
   const container = document.getElementById('calib-log-container');
@@ -699,10 +762,38 @@ function renderCalibLog() {
           <td style="font-size:12px;${isCalibExpiringSoon(c.nextDate)?'color:var(--warn);font-weight:600;':''}">${c.nextDate||'-'}</td>
           <td>${c.person}</td>
           <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteCalib('${c.id}')">🗑</button></td>
+          <td style="display:flex;gap:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="openCalibEditModal('${c.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCalib('${c.id}')">🗑</button>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>
+    <div class="log-card-list">
+      ${calibs.map(c => `
+        <div class="log-card">
+          <div class="log-card-header">
+            <span class="log-card-date">${c.date}</span>
+            <span class="log-card-person">👤 ${c.person}</span>
+          </div>
+          <div class="log-card-body">
+            <div class="log-card-row">
+              <span class="log-card-label">교정번호</span>
+              <span class="log-card-value" style="font-family:'JetBrains Mono',monospace;">${c.calNum||'-'}</span>
+            </div>
+            <div class="log-card-row">
+              <span class="log-card-label">차기교정일</span>
+              <span class="log-card-value" style="${isCalibExpiringSoon(c.nextDate)?'color:var(--warn);font-weight:600;':''}">${c.nextDate||'-'}</span>
+            </div>
+            ${c.memo ? `<div class="log-card-row"><span class="log-card-label">메모</span><span class="log-card-value" style="color:var(--text-muted)">${c.memo}</span></div>` : ''}
+          </div>
+          <div class="log-card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openCalibEditModal('${c.id}')">✏️ 수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCalib('${c.id}')">🗑 삭제</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -717,6 +808,8 @@ function isCalibExpiringSoon(nextDate) {
 }
 
 function openCalibModal() {
+  editingCalibId = null;
+  document.getElementById('modal-calib-title').textContent = '검교정 기록 추가';
   const today = new Date();
   const fmt = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
   document.getElementById('cal-date').value = fmt;
@@ -727,21 +820,42 @@ function openCalibModal() {
   openModal('modal-calib');
 }
 
+function openCalibEditModal(id) {
+  editingCalibId = id;
+  const c = (db.calibs||[]).find(c => c.id === id);
+  if (!c) return;
+  document.getElementById('modal-calib-title').textContent = '검교정 기록 수정';
+  document.getElementById('cal-date').value = c.date||'';
+  document.getElementById('cal-num').value = c.calNum||'';
+  document.getElementById('cal-next').value = c.nextDate||'';
+  document.getElementById('cal-person').value = c.person||'';
+  document.getElementById('cal-memo').value = c.memo||'';
+  openModal('modal-calib');
+}
+
 async function saveCalib() {
   const date = document.getElementById('cal-date').value.trim();
   const person = document.getElementById('cal-person').value.trim();
   if (!date || !person) { alert('교정일과 담당자를 입력해주세요.'); return; }
   const btn = document.getElementById('btn-save-calib');
   btn.textContent = '저장 중...'; btn.disabled = true;
-  const data = {
-    action: 'addCalib', eqId: currentEqId, date, person,
+  const payload = {
+    eqId: currentEqId, date, person,
     calNum: document.getElementById('cal-num').value.trim(),
     nextDate: document.getElementById('cal-next').value.trim(),
     memo: document.getElementById('cal-memo').value.trim()
   };
-  const res = await apiPost(data);
   if (!db.calibs) db.calibs = [];
-  db.calibs.push({ id: res.id || ('cal'+Date.now()), ...data });
+  if (editingCalibId) {
+    payload.action = 'editCalib'; payload.id = editingCalibId;
+    await apiPost(payload);
+    const idx = db.calibs.findIndex(c => c.id === editingCalibId);
+    db.calibs[idx] = { ...db.calibs[idx], ...payload };
+  } else {
+    payload.action = 'addCalib';
+    const res = await apiPost(payload);
+    db.calibs.push({ id: res.id || ('cal'+Date.now()), ...payload });
+  }
   btn.textContent = '저장'; btn.disabled = false;
   closeModal('modal-calib');
   renderCalibLog();
