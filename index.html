@@ -3,9 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
 <title>설비 관리 시스템 | QC팀</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root { color-scheme: light only; }
 
   :root {
     --bg: #f0f4f9;
@@ -209,15 +212,20 @@
     .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
     .detail-meta-grid { grid-template-columns: 1fr 1fr; }
     .form-row { grid-template-columns: 1fr; }
-    .nav-tab span { display: none; }
-    .nav-tab { padding: 6px 10px; font-size: 12px; }
     .view { padding: 14px; }
     .check-table { display: none; }
     .log-card-list { display: flex; }
     .detail-header { padding: 16px; }
     .detail-title { font-size: 18px; }
-    .inner-tab { padding: 7px 8px; font-size: 11px; }
-    .app-header { padding: 0 16px; height: 54px; }
+    .inner-tab { padding: 7px 6px; font-size: 11px; }
+    .app-header { padding: 0 12px; height: 54px; }
+    .header-brand { gap: 8px; }
+    .header-brand img { width: 34px !important; height: 34px !important; }
+    .header-title { font-size: 14px !important; letter-spacing: 1.5px !important; }
+    .header-sub { font-size: 10px !important; }
+    .header-divider { display: none; }
+    .nav-tabs { gap: 1px; padding: 2px; }
+    .nav-tab { padding: 5px 8px; font-size: 11px; }
   }
   @media (min-width: 701px) {
     .log-card-list { display: none; }
@@ -706,11 +714,17 @@ function openDetail(id) {
   const last = eqChecks[0];
 
   document.getElementById('detail-header').innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-      <div style="flex:1">
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+      ${eq.photo ? `
+      <div style="flex-shrink:0;">
+        <img src="${convertDriveLink(eq.photo)}" alt="설비 사진"
+          style="width:260px;height:220px;border-radius:10px;border:1px solid var(--border);object-fit:cover;display:block;"
+          onerror="this.style.display='none'">
+      </div>` : ''}
+      <div style="flex:1;min-width:260px;">
         <div class="detail-title">${eq.name}</div>
         <div class="detail-model">${eq.model||''} ${eq.serial?'· SN: '+eq.serial:''}</div>
-        <div class="detail-meta-grid">
+        <div class="detail-meta-grid" style="margin-bottom:0;">
           <div><div class="meta-label">부서</div><div class="meta-value">${eq.dept||'-'}</div></div>
           <div><div class="meta-label">담당자</div><div class="meta-value">${eq.manager||'-'}</div></div>
           <div><div class="meta-label">위치</div><div class="meta-value">${eq.location||'-'}</div></div>
@@ -718,9 +732,8 @@ function openDetail(id) {
           <div><div class="meta-label">구입일</div><div class="meta-value">${eq.install||'-'}</div></div>
           <div><div class="meta-label">최근 점검</div><div class="meta-value">${last?last.date:'없음'}</div></div>
         </div>
-        ${eq.photo ? `<div style="margin-top:12px;"><img src="${convertDriveLink(eq.photo)}" alt="설비 사진" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid var(--border);object-fit:cover;" onerror="this.style.display='none'"></div>` : ''}
       </div>
-      <div class="qr-section" style="min-width:120px;">
+      <div class="qr-section" style="flex-shrink:0;min-width:120px;">
         <div id="detail-qr-${id}"></div>
         <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${id}</div>
         <button class="btn btn-secondary btn-sm" onclick="downloadQR('detail-qr-${id}','${eq.name}')">⬇ QR 저장</button>
