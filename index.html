@@ -10,6 +10,31 @@
 
   :root { color-scheme: light only; }
 
+  html, body {
+    color-scheme: light only !important;
+    background-color: #f0f4f9 !important;
+    color: #1e293b !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html, body { background-color: #f0f4f9 !important; color: #1e293b !important; }
+    * { color-scheme: light only !important; }
+    .app-header { background: #ffffff !important; }
+    .card, .eq-card, .stat-card, .modal, .detail-header { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+    .eq-card-name, .detail-title, .meta-value, .stat-num { color: #1e293b !important; }
+    .eq-card-model, .eq-card-date, .meta-label, .stat-label, .text-muted { color: #64748b !important; }
+    input, select, textarea { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+    .search-box { background: #ffffff !important; color: #1e293b !important; }
+    .btn-secondary { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+    .check-table th { background: #f7f9fc !important; color: #64748b !important; }
+    .check-table td { color: #1e293b !important; }
+    .log-card { background: #f7f9fc !important; }
+    .manual-box { background: #f7f9fc !important; color: #1e293b !important; }
+    .inner-tabs { background: #ffffff !important; }
+    .inner-tab { color: #64748b !important; }
+    .modal-footer { background: #f7f9fc !important; }
+  }
+
   :root {
     --bg: #f0f4f9;
     --surface: #ffffff;
