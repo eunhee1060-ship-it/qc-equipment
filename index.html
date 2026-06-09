@@ -530,6 +530,44 @@
   </div>
 </div>
 
+<!-- 모달: 점검 기록 수정 -->
+<div class="modal-overlay" id="modal-check-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>점검 기록 수정</h2>
+      <button class="close-btn" onclick="closeModal('modal-check-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>점검일자 *</label><input id="ce-date" type="text" placeholder="예: 2026.05.07"></div>
+        <div class="form-group"><label>담당/확인자 *</label><input id="ce-person" type="text"></div>
+      </div>
+      <div class="form-group">
+        <label>기기점검 — 이상소음·진동·소프트웨어 정확성</label>
+        <select id="ce-machine">
+          <option value="이상없음">✅ 이상없음</option>
+          <option value="이상있음">⚠️ 이상있음</option>
+          <option value="점검필요">🔧 점검필요</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>청소상태 — 먼지 및 내부오염물질</label>
+        <select id="ce-clean">
+          <option value="양호">✅ 양호</option>
+          <option value="미세먼지 있음">🧹 미세먼지 있음</option>
+          <option value="오염있음">🧹 오염있음</option>
+          <option value="청소필요">⚠️ 청소필요</option>
+        </select>
+      </div>
+      <div class="form-group"><label>특이사항 메모</label><textarea id="ce-memo" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-check-edit')">취소</button>
+      <button class="btn btn-primary" id="btn-save-check-edit" onclick="saveCheckEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 모달: 점검 기록 -->
 <div class="modal-overlay" id="modal-check">
   <div class="modal">
@@ -879,7 +917,10 @@ function renderCheckLog() {
           <td style="font-size:12px;">${c.clean}</td>
           <td>${c.person}</td>
           <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button></td>
+          <td style="display:flex;gap:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="openCheckEditModal('${c.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -902,6 +943,7 @@ function renderCheckLog() {
             ${c.memo ? `<div class="log-card-row"><span class="log-card-label">메모</span><span class="log-card-value" style="color:var(--text-muted)">${c.memo}</span></div>` : ''}
           </div>
           <div class="log-card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openCheckEditModal('${c.id}')">✏️ 수정</button>
             <button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑 삭제</button>
           </div>
         </div>
@@ -1010,7 +1052,41 @@ async function saveCheck() {
   renderStats();
 }
 
-async function deleteCheck(id) {
+let editingCheckId = null;
+
+function openCheckEditModal(id) {
+  editingCheckId = id;
+  const c = db.checks.find(c => c.id === id);
+  if (!c) return;
+  document.getElementById('ce-date').value = c.date||'';
+  document.getElementById('ce-person').value = c.person||'';
+  document.getElementById('ce-machine').value = c.machine||'이상없음';
+  document.getElementById('ce-clean').value = c.clean||'양호';
+  document.getElementById('ce-memo').value = c.memo||'';
+  openModal('modal-check-edit');
+}
+
+async function saveCheckEdit() {
+  const date = document.getElementById('ce-date').value.trim();
+  const person = document.getElementById('ce-person').value.trim();
+  if (!date || !person) { alert('날짜와 담당자를 입력해주세요.'); return; }
+  const btn = document.getElementById('btn-save-check-edit');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  const data = {
+    action: 'editCheck', id: editingCheckId,
+    date, person,
+    machine: document.getElementById('ce-machine').value,
+    clean: document.getElementById('ce-clean').value,
+    memo: document.getElementById('ce-memo').value.trim()
+  };
+  await apiPost(data);
+  const idx = db.checks.findIndex(c => c.id === editingCheckId);
+  db.checks[idx] = { ...db.checks[idx], ...data };
+  btn.textContent = '저장'; btn.disabled = false;
+  closeModal('modal-check-edit');
+  renderCheckLog();
+  renderStats();
+}
   if (!confirm('이 점검 기록을 삭제할까요?')) return;
   await apiPost({ action: 'deleteCheck', id });
   db.checks = db.checks.filter(c => c.id !== id);
@@ -1165,9 +1241,12 @@ async function saveBatchCheck() {
   const isMobile = window.innerWidth <= 700;
   const suffix = isMobile ? '-m-' : '-';
 
-  const checkedIds = [...document.querySelectorAll('.batch-check')]
+  // 중복 방지: 현재 보이는 쪽 체크박스만 읽기
+  const selector = isMobile ? '#batch-mobile-list .batch-check' : 'table .batch-check';
+  const checkedIds = [...document.querySelectorAll(selector)]
     .filter(cb => cb.checked)
-    .map(cb => cb.dataset.id);
+    .map(cb => cb.dataset.id)
+    .filter((id, idx, arr) => arr.indexOf(id) === idx); // 혹시 모를 중복 제거
 
   if (checkedIds.length === 0) { alert('저장할 설비를 선택해주세요.'); return; }
 
