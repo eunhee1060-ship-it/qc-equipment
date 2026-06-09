@@ -1087,6 +1087,8 @@ async function saveCheckEdit() {
   renderCheckLog();
   renderStats();
 }
+
+async function deleteCheck(id) {
   if (!confirm('이 점검 기록을 삭제할까요?')) return;
   await apiPost({ action: 'deleteCheck', id });
   db.checks = db.checks.filter(c => c.id !== id);
