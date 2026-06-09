@@ -85,10 +85,10 @@
     box-shadow: 0 2px 12px rgba(42,82,152,0.12);
     border-bottom: 1px solid #e2e8f0;
   }
-  .header-brand { display: flex; align-items: center; gap: 16px; }
-  .header-divider { width: 1px; height: 42px; background: #e0e0e0; }
-  .header-title { font-size: 22px; font-weight: 700; letter-spacing: 3px; color: #2a5298; }
-  .header-sub { font-size: 12px; color: #999; margin-top: 3px; }
+  .header-brand { display: flex; align-items: center; gap: 16px; overflow: hidden; }
+  .header-divider { width: 1px; height: 42px; background: #e0e0e0; flex-shrink: 0; }
+  .header-title { font-size: 22px; font-weight: 700; letter-spacing: 3px; color: #2a5298; white-space: nowrap; }
+  .header-sub { font-size: 12px; color: #999; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .nav-tabs { display: flex; gap: 2px; background: #f0f4f9; border-radius: 10px; padding: 3px; }
   .nav-tab {
@@ -259,8 +259,8 @@
     .app-header { padding: 0 12px; height: 54px; }
     .header-brand { gap: 8px; }
     .header-brand img { width: 34px !important; height: 34px !important; }
-    .header-title { font-size: 14px !important; letter-spacing: 1.5px !important; }
-    .header-sub { font-size: 10px !important; }
+    .header-title { font-size: 16px !important; letter-spacing: 2px !important; }
+    .header-sub { display: none; }
     .header-divider { display: none; }
     .nav-tabs { gap: 1px; padding: 2px; }
     .nav-tab { padding: 5px 8px; font-size: 11px; }
@@ -390,12 +390,12 @@
 
 <!-- 설비 목록 -->
 <div class="view active" id="view-list">
-  <div id="hero-banner" style="background:linear-gradient(135deg,#2a5298 0%,#3a6abf 100%);border-radius:14px;padding:24px 28px;margin-bottom:20px;color:white;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-    <div>
-      <div style="font-size:20px;font-weight:600;margin-bottom:4px;">설비 관리 시스템</div>
+  <div id="hero-banner" style="background:linear-gradient(135deg,#2a5298 0%,#3a6abf 100%);border-radius:14px;padding:20px 24px;margin-bottom:20px;color:white;">
+    <div style="margin-bottom:14px;">
+      <div style="font-size:18px;font-weight:600;margin-bottom:2px;">설비 관리 시스템</div>
       <div style="font-size:12px;opacity:0.75;">오영 품질관리부 반응QC</div>
     </div>
-    <div id="hero-stats" style="display:flex;gap:12px;"></div>
+    <div id="hero-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
   </div>
   <div class="toolbar">
     <div class="toolbar-left">
@@ -707,12 +707,12 @@ function renderStats() {
     heroStats.innerHTML = [
       [total, '등록 설비'],
       [totalChecks, '전체 점검'],
-      [recentChecked, '이번달 점검'],
+      [recentChecked, '이번달'],
       [warnCount, '이상 기록'],
     ].map(([n, label]) => `
-      <div style="text-align:center;background:rgba(255,255,255,0.15);border-radius:10px;padding:10px 16px;min-width:70px;">
-        <div style="font-size:24px;font-weight:600;line-height:1;">${n}</div>
-        <div style="font-size:11px;opacity:0.75;margin-top:3px;">${label}</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px 8px;">
+        <div style="font-size:22px;font-weight:600;line-height:1;">${n}</div>
+        <div style="font-size:10px;opacity:0.75;margin-top:3px;white-space:nowrap;">${label}</div>
       </div>
     `).join('');
   }
@@ -735,24 +735,24 @@ function renderList() {
     return `
       <div onclick="openDetail('${eq.id}')" style="
         background:#fff;border:0.5px solid var(--border);border-radius:10px;
-        padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;
-        gap:16px;cursor:pointer;transition:all 0.2s;
+        padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;
+        gap:12px;cursor:pointer;transition:all 0.2s;
       " onmouseover="this.style.borderColor='#2a5298'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="width:4px;height:44px;background:${hasWarn?'#dc2626':noCheck?'#94a3b8':'#2a5298'};border-radius:4px;flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;margin-bottom:2px;">${eq.name}</div>
-          <div style="font-size:12px;color:var(--text-muted);">${eq.model||''} ${eq.model&&eq.dept?'·':''} ${eq.dept||''} ${eq.location?'· '+eq.location:''}</div>
+        <div style="width:4px;min-height:44px;align-self:stretch;background:${hasWarn?'#dc2626':noCheck?'#94a3b8':'#2a5298'};border-radius:4px;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;overflow:hidden;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${eq.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${[eq.model, eq.location].filter(Boolean).join(' · ')}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
           ${last
-            ? `<span class="badge ${hasWarn?'badge-warn':'badge-ok'}">${hasWarn?'⚠ 이상':'✓ 정상'}</span>`
-            : `<span class="badge" style="background:#f0f0f0;color:#999;">점검전</span>`
+            ? `<span class="badge ${hasWarn?'badge-warn':'badge-ok'}" style="white-space:nowrap;">${hasWarn?'⚠ 이상':'✓ 정상'}</span>`
+            : `<span class="badge" style="background:#f0f0f0;color:#999;white-space:nowrap;">점검전</span>`
           }
-          <div style="font-size:11px;color:var(--text-muted);text-align:right;min-width:90px;">
-            ${last ? `<div>${last.date}</div><div>${last.person}</div>` : '—'}
+          <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap;">
+            ${last ? `${last.date} · ${last.person}` : '—'}
           </div>
-          <span style="color:var(--text-muted);font-size:18px;">›</span>
         </div>
+        <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
       </div>
     `;
   }).join('');
