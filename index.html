@@ -918,8 +918,8 @@ function renderCheckLog() {
           <td>${c.person}</td>
           <td style="color:var(--text-muted);font-size:12px;">${c.memo||'-'}</td>
           <td style="display:flex;gap:4px;">
-            <button class="btn btn-secondary btn-sm" onclick="openCheckEditModal('${c.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">🗑</button>
+            <button class="btn btn-secondary btn-sm" onclick="openCheckEditModal('${c.id}')">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCheck('${c.id}')">삭제</button>
           </td>
         </tr>`).join('')}
       </tbody>
