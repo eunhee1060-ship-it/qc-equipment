@@ -806,7 +806,7 @@ function openDetail(id) {
       ${eq.photo ? `
       <div style="flex-shrink:0;">
         <img src="${convertDriveLink(eq.photo)}" alt="설비 사진"
-          style="width:240px;height:320px;border-radius:10px;border:1px solid var(--border);object-fit:contain;background:#f7f9fc;display:block;"
+          style="width:240px;height:320px;border-radius:10px;border:1px solid var(--border);object-fit:contain;background:#f7f9fc;display:block;max-width:100%;"
           onerror="this.style.display='none'">
       </div>` : ''}
       <div style="flex:1;min-width:260px;">
@@ -852,9 +852,13 @@ function openDetail(id) {
     </div>
   `;
 
-  document.querySelectorAll('.inner-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
-  document.querySelectorAll('.inner-content').forEach((c,i)=>c.classList.toggle('active',i===0));
+  // 모바일에서는 기기정보(사진) 탭을 기본으로, 컴퓨터에서는 점검이력 기본
+  const defaultTab = window.innerWidth <= 700 ? 3 : 0;
+  document.querySelectorAll('.inner-tab').forEach((t,i)=>t.classList.toggle('active', i===defaultTab));
+  document.querySelectorAll('.inner-content').forEach((c,i)=>c.classList.toggle('active', i===defaultTab));
   showView('detail');
+  // 모바일에서 페이지 상단으로 스크롤
+  if (window.innerWidth <= 700) window.scrollTo(0, 0);
 }
 
 function renderCheckLog() {
@@ -1161,7 +1165,6 @@ async function saveBatchCheck() {
   const isMobile = window.innerWidth <= 700;
   const suffix = isMobile ? '-m-' : '-';
 
-  // 체크된 설비만 필터링
   const checkedIds = [...document.querySelectorAll('.batch-check')]
     .filter(cb => cb.checked)
     .map(cb => cb.dataset.id);
@@ -1169,9 +1172,11 @@ async function saveBatchCheck() {
   if (checkedIds.length === 0) { alert('저장할 설비를 선택해주세요.'); return; }
 
   const btn = document.getElementById('btn-batch-save');
-  btn.textContent = '저장 중...'; btn.disabled = true;
+  btn.textContent = `저장 중... (0/${checkedIds.length})`; btn.disabled = true;
 
-  for (const eqId of checkedIds) {
+  // 모든 요청을 동시에 병렬 처리
+  let done = 0;
+  const promises = checkedIds.map(async eqId => {
     const machine = document.getElementById(`batch-machine${suffix}${eqId}`)?.value || '이상없음';
     const clean = document.getElementById(`batch-clean${suffix}${eqId}`)?.value || '양호';
     const memo = document.getElementById(`batch-memo${suffix}${eqId}`)?.value || '';
@@ -1179,7 +1184,11 @@ async function saveBatchCheck() {
     const res = await apiPost(data);
     if (!db.checks) db.checks = [];
     db.checks.push({ id: res.id || ('c'+Date.now()+eqId), ...data });
-  }
+    done++;
+    btn.textContent = `저장 중... (${done}/${checkedIds.length})`;
+  });
+
+  await Promise.all(promises);
 
   btn.textContent = '💾 전체 저장'; btn.disabled = false;
   alert(`✅ ${checkedIds.length}개 설비 점검 기록이 저장됐어요!`);
