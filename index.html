@@ -625,7 +625,7 @@
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyf1oYXQYzCyq34A3L4gkzy0riL-yrztPTjGVc2YjbboiU0S00qJlSeBCRoFd87IjLd/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzgR7QIXSu9TbILBnHRV67txwE-c7rBMU_EjVcqYMRAUqho-M5h_c4hj7dS6MlWzKSe/exec';
 
 let db = { equipment: [], checks: [], calibs: [] };
 let currentEqId = null;
@@ -1172,23 +1172,24 @@ async function saveBatchCheck() {
   if (checkedIds.length === 0) { alert('저장할 설비를 선택해주세요.'); return; }
 
   const btn = document.getElementById('btn-batch-save');
-  btn.textContent = `저장 중... (0/${checkedIds.length})`; btn.disabled = true;
+  btn.textContent = '저장 중...'; btn.disabled = true;
 
-  // 모든 요청을 동시에 병렬 처리
-  let done = 0;
-  const promises = checkedIds.map(async eqId => {
-    const machine = document.getElementById(`batch-machine${suffix}${eqId}`)?.value || '이상없음';
-    const clean = document.getElementById(`batch-clean${suffix}${eqId}`)?.value || '양호';
-    const memo = document.getElementById(`batch-memo${suffix}${eqId}`)?.value || '';
-    const data = { action: 'addCheck', eqId, date, person, machine, clean, memo };
-    const res = await apiPost(data);
-    if (!db.checks) db.checks = [];
-    db.checks.push({ id: res.id || ('c'+Date.now()+eqId), ...data });
-    done++;
-    btn.textContent = `저장 중... (${done}/${checkedIds.length})`;
-  });
+  // 한번에 모든 데이터를 묶어서 전송
+  const items = checkedIds.map(eqId => ({
+    eqId,
+    machine: document.getElementById(`batch-machine${suffix}${eqId}`)?.value || '이상없음',
+    clean: document.getElementById(`batch-clean${suffix}${eqId}`)?.value || '양호',
+    memo: document.getElementById(`batch-memo${suffix}${eqId}`)?.value || ''
+  }));
 
-  await Promise.all(promises);
+  const res = await apiPost({ action: 'addCheckBatch', date, person, items });
+
+  if (res.ids) {
+    items.forEach((item, i) => {
+      if (!db.checks) db.checks = [];
+      db.checks.push({ id: res.ids[i] || ('c'+Date.now()+i), eqId: item.eqId, date, person, ...item });
+    });
+  }
 
   btn.textContent = '💾 전체 저장'; btn.disabled = false;
   alert(`✅ ${checkedIds.length}개 설비 점검 기록이 저장됐어요!`);
