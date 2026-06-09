@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" style="color-scheme:light!important;background:#f0f4f9!important;">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,29 +10,42 @@
 
   :root { color-scheme: light only; }
 
+  html {
+    filter: none !important;
+    -webkit-filter: none !important;
+    background: #f0f4f9 !important;
+  }
+
   html, body {
     color-scheme: light only !important;
     background-color: #f0f4f9 !important;
     color: #1e293b !important;
+    forced-color-adjust: none !important;
+    -webkit-text-fill-color: initial !important;
   }
 
   @media (prefers-color-scheme: dark) {
-    html, body { background-color: #f0f4f9 !important; color: #1e293b !important; }
-    * { color-scheme: light only !important; }
+    html { background: #f0f4f9 !important; filter: none !important; }
+    body { background-color: #f0f4f9 !important; color: #1e293b !important; }
+    * { color-scheme: light only !important; forced-color-adjust: none !important; }
     .app-header { background: #ffffff !important; }
     .card, .eq-card, .stat-card, .modal, .detail-header { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
     .eq-card-name, .detail-title, .meta-value, .stat-num { color: #1e293b !important; }
-    .eq-card-model, .eq-card-date, .meta-label, .stat-label, .text-muted { color: #64748b !important; }
+    .eq-card-model, .eq-card-date, .meta-label, .stat-label { color: #64748b !important; }
     input, select, textarea { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
     .search-box { background: #ffffff !important; color: #1e293b !important; }
     .btn-secondary { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
     .check-table th { background: #f7f9fc !important; color: #64748b !important; }
     .check-table td { color: #1e293b !important; }
-    .log-card { background: #f7f9fc !important; }
+    .log-card { background: #f7f9fc !important; color: #1e293b !important; }
+    .log-card-value { color: #1e293b !important; }
     .manual-box { background: #f7f9fc !important; color: #1e293b !important; }
     .inner-tabs { background: #ffffff !important; }
     .inner-tab { color: #64748b !important; }
     .modal-footer { background: #f7f9fc !important; }
+    .badge-dept { background: #e8edf7 !important; color: #2a5298 !important; }
+    .badge-ok { background: #ecfdf5 !important; color: #059669 !important; }
+    .badge-warn { background: #fef2f2 !important; color: #dc2626 !important; }
   }
 
   :root {
@@ -369,6 +382,7 @@
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="showView('list')">📋 <span>설비 목록</span></button>
+    <button class="nav-tab" onclick="showView('batch')">✅ <span>일괄 점검</span></button>
     <button class="nav-tab" onclick="showView('qr')">📱 <span>QR 관리</span></button>
     <button class="nav-tab" onclick="showView('admin')">🔧 <span>관리자</span></button>
   </nav>
@@ -390,6 +404,25 @@
   </div>
   <div class="eq-grid" id="eq-grid">
     <div class="loading" style="grid-column:1/-1"><div class="spinner"></div> 데이터 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- 일괄 점검 -->
+<div class="view" id="view-batch">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">✅ 일괄 점검 등록</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.3px;">점검일자</label>
+        <input id="batch-date" type="text" style="width:160px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;" placeholder="예: 2026.05.21">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.3px;">담당자</label>
+        <input id="batch-person" type="text" style="width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;" placeholder="예: 방은희">
+      </div>
+      <button class="btn btn-primary" onclick="saveBatchCheck()" id="btn-batch-save">💾 전체 저장</button>
+    </div>
+    <div id="batch-list"></div>
   </div>
 </div>
 
@@ -572,6 +605,10 @@
         <input id="m-filelink" type="text" placeholder="구글 드라이브 공유 링크 붙여넣기">
       </div>
       <div class="form-group">
+        <label>동영상 링크 (구글 드라이브 또는 유튜브)</label>
+        <input id="m-videolink" type="text" placeholder="동영상 공유 링크 붙여넣기">
+      </div>
+      <div class="form-group">
         <label>추가 메모 (선택)</label>
         <textarea id="m-content" rows="5" placeholder="간단한 주의사항이나 메모를 입력하세요..."></textarea>
       </div>
@@ -637,9 +674,10 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-  const idx = ['list','qr','admin'].indexOf(name);
+  const idx = ['list','batch','qr','admin'].indexOf(name);
   if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   if (name === 'list') { renderStats(); renderList(); }
+  if (name === 'batch') { renderBatchList(); }
   if (name === 'qr') { renderQR(); }
   if (name === 'admin') { renderAdmin(); }
 }
@@ -951,7 +989,119 @@ async function deleteCheck(id) {
   renderStats();
 }
 
-// ===== 검교정 =====
+// ===== 일괄 점검 =====
+function renderBatchList() {
+  const today = new Date();
+  const fmt = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('batch-date').value = fmt;
+
+  const container = document.getElementById('batch-list');
+  if (db.equipment.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>등록된 설비가 없어요.</p></div>`;
+    return;
+  }
+  container.innerHTML = `
+    <table class="check-table" style="font-size:13px;">
+      <thead>
+        <tr>
+          <th style="width:200px;">설비명</th>
+          <th>기기점검</th>
+          <th>청소상태</th>
+          <th>메모</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${db.equipment.map(eq => `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${eq.name}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${eq.manager||''}</div>
+            </td>
+            <td>
+              <select id="batch-machine-${eq.id}" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;min-width:130px;">
+                <option value="이상없음">✅ 이상없음</option>
+                <option value="이상있음">⚠️ 이상있음</option>
+                <option value="점검필요">🔧 점검필요</option>
+              </select>
+            </td>
+            <td>
+              <select id="batch-clean-${eq.id}" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;min-width:130px;">
+                <option value="양호">✅ 양호</option>
+                <option value="미세먼지 있음">🧹 미세먼지 있음</option>
+                <option value="오염있음">🧹 오염있음</option>
+                <option value="청소필요">⚠️ 청소필요</option>
+              </select>
+            </td>
+            <td>
+              <input type="text" id="batch-memo-${eq.id}" placeholder="메모 (선택)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;width:100%;">
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <!-- 모바일 카드형 -->
+    <div class="log-card-list" style="display:none;" id="batch-mobile-list">
+      ${db.equipment.map(eq => `
+        <div class="log-card">
+          <div style="font-weight:700;font-size:14px;margin-bottom:10px;">${eq.name} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">${eq.manager||''}</span></div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">기기점검</label>
+            <select id="batch-machine-m-${eq.id}" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;margin-top:4px;">
+              <option value="이상없음">✅ 이상없음</option>
+              <option value="이상있음">⚠️ 이상있음</option>
+              <option value="점검필요">🔧 점검필요</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">청소상태</label>
+            <select id="batch-clean-m-${eq.id}" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;margin-top:4px;">
+              <option value="양호">✅ 양호</option>
+              <option value="미세먼지 있음">🧹 미세먼지 있음</option>
+              <option value="오염있음">🧹 오염있음</option>
+              <option value="청소필요">⚠️ 청소필요</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">메모</label>
+            <input type="text" id="batch-memo-m-${eq.id}" placeholder="메모 (선택)" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;margin-top:4px;">
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // 모바일이면 카드형 보이기
+  if (window.innerWidth <= 700) {
+    container.querySelector('table').style.display = 'none';
+    container.querySelector('#batch-mobile-list').style.display = 'flex';
+  }
+}
+
+async function saveBatchCheck() {
+  const date = document.getElementById('batch-date').value.trim();
+  const person = document.getElementById('batch-person').value.trim();
+  if (!date || !person) { alert('점검일자와 담당자를 입력해주세요.'); return; }
+
+  const btn = document.getElementById('btn-batch-save');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+
+  const isMobile = window.innerWidth <= 700;
+  const suffix = isMobile ? '-m-' : '-';
+
+  for (const eq of db.equipment) {
+    const machine = document.getElementById(`batch-machine${suffix}${eq.id}`)?.value || '이상없음';
+    const clean = document.getElementById(`batch-clean${suffix}${eq.id}`)?.value || '양호';
+    const memo = document.getElementById(`batch-memo${suffix}${eq.id}`)?.value || '';
+    const data = { action: 'addCheck', eqId: eq.id, date, person, machine, clean, memo };
+    const res = await apiPost(data);
+    if (!db.checks) db.checks = [];
+    db.checks.push({ id: res.id || ('c'+Date.now()+eq.id), ...data });
+  }
+
+  btn.textContent = '💾 전체 저장'; btn.disabled = false;
+  alert(`✅ ${db.equipment.length}개 설비 점검 기록이 저장됐어요!`);
+  renderStats();
+}
 let editingCalibId = null;
 
 function renderCalibLog() {
@@ -1081,6 +1231,7 @@ async function deleteCalib(id) {
 function openManualEditModal() {
   const eq = db.equipment.find(e => e.id === currentEqId);
   document.getElementById('m-filelink').value = eq?.manualLink||'';
+  document.getElementById('m-videolink').value = eq?.videoLink||'';
   document.getElementById('m-content').value = eq?.manual||'';
   openModal('modal-manual');
 }
@@ -1091,10 +1242,12 @@ async function saveManual() {
   const eq = db.equipment.find(e => e.id === currentEqId);
   const manual = document.getElementById('m-content').value;
   const manualLink = document.getElementById('m-filelink').value.trim();
-  await apiPost({ action: 'editManual', ...eq, manual, manualLink });
+  const videoLink = document.getElementById('m-videolink').value.trim();
+  await apiPost({ action: 'editManual', ...eq, manual, manualLink, videoLink });
   const idx = db.equipment.findIndex(e => e.id === currentEqId);
   db.equipment[idx].manual = manual;
   db.equipment[idx].manualLink = manualLink;
+  db.equipment[idx].videoLink = videoLink;
   renderManualContent();
   btn.textContent = '저장'; btn.disabled = false;
   closeModal('modal-manual');
@@ -1118,11 +1271,13 @@ function renderManualContent() {
           <span style="font-size:13px;font-weight:600;">📄 첨부 문서</span>
           <a href="${link}" target="_blank" class="btn btn-secondary btn-sm">🔗 새 탭에서 열기</a>
         </div>
-        <iframe src="https://drive.google.com/file/d/${fileId}/preview" 
-          width="100%" height="500px" 
-          style="border:1px solid var(--border);border-radius:8px;" 
-          allow="autoplay">
-        </iframe>
+        <div style="width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-align:center;">
+          <iframe src="https://drive.google.com/file/d/${fileId}/preview"
+            width="100%" height="520px"
+            style="display:block;border:none;background:#ffffff;margin:0 auto;"
+            allow="autoplay">
+          </iframe>
+        </div>
       `;
     } else {
       // 워드 등 미리보기 안 되는 파일
@@ -1140,7 +1295,28 @@ function renderManualContent() {
     html += `<div class="manual-box" style="margin-top:${eq?.manualLink?'16px':'0'}">${eq.manual.replace(/\n/g,'<br>')}</div>`;
   }
 
-  if (!eq?.manualLink && !eq?.manual) {
+  // 동영상
+  if (eq?.videoLink) {
+    const vlink = eq.videoLink.trim();
+    const driveId = extractDriveId(vlink);
+    const ytMatch = vlink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    let videoHtml = '';
+    if (ytMatch) {
+      videoHtml = `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" width="100%" height="315" style="border:none;border-radius:8px;" allowfullscreen></iframe>`;
+    } else if (driveId) {
+      videoHtml = `<iframe src="https://drive.google.com/file/d/${driveId}/preview" width="100%" height="315" style="border:none;border-radius:8px;" allow="autoplay"></iframe>`;
+    }
+    if (videoHtml) {
+      html += `
+        <div style="margin-top:16px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🎬 동영상</div>
+          <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);">${videoHtml}</div>
+        </div>
+      `;
+    }
+  }
+
+  if (!eq?.manualLink && !eq?.manual && !eq?.videoLink) {
     html = '<div style="color:var(--text-muted);font-size:13px;">사용법이 아직 등록되지 않았어요.</div>';
   }
 
