@@ -372,7 +372,7 @@
 <body>
 
 <header class="app-header">
-  <div class="header-brand">
+  <div class="header-brand" onclick="showView('list')" style="cursor:pointer;" title="홈으로">
     <img src="https://drive.google.com/thumbnail?id=1z6L5wiLkMBe6KH6GBW1UmvgHipi-vWEw&sz=w48" alt="오영 로고" style="width:52px;height:52px;object-fit:contain;">
     <div class="header-divider"></div>
     <div>
@@ -390,8 +390,12 @@
 
 <!-- 설비 목록 -->
 <div class="view active" id="view-list">
-  <div class="stats-row" id="stats-row">
-    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+  <div id="hero-banner" style="background:linear-gradient(135deg,#2a5298 0%,#3a6abf 100%);border-radius:14px;padding:24px 28px;margin-bottom:20px;color:white;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:4px;">설비 관리 시스템</div>
+      <div style="font-size:12px;opacity:0.75;">오영 품질관리부 반응QC</div>
+    </div>
+    <div id="hero-stats" style="display:flex;gap:12px;"></div>
   </div>
   <div class="toolbar">
     <div class="toolbar-left">
@@ -402,8 +406,8 @@
     </div>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 새 설비 등록</button>
   </div>
-  <div class="eq-grid" id="eq-grid">
-    <div class="loading" style="grid-column:1/-1"><div class="spinner"></div> 데이터 불러오는 중...</div>
+  <div id="eq-grid" style="margin-top:16px;">
+    <div class="loading"><div class="spinner"></div> 데이터 불러오는 중...</div>
   </div>
 </div>
 
@@ -698,12 +702,20 @@ function renderStats() {
   const totalChecks = db.checks.length;
   const warnCount = db.checks.filter(c => c.machine && c.machine !== '이상없음').length;
 
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${total}</div><div class="stat-label">등록 설비 수</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--ok)">${totalChecks}</div><div class="stat-label">전체 점검 기록</div></div>
-    <div class="stat-card"><div class="stat-num">${recentChecked}</div><div class="stat-label">이번 달 점검 완료</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:${warnCount>0?'var(--warn)':'var(--ok)'}">${warnCount}</div><div class="stat-label">이상 기록 수</div></div>
-  `;
+  const heroStats = document.getElementById('hero-stats');
+  if (heroStats) {
+    heroStats.innerHTML = [
+      [total, '등록 설비'],
+      [totalChecks, '전체 점검'],
+      [recentChecked, '이번달 점검'],
+      [warnCount, '이상 기록'],
+    ].map(([n, label]) => `
+      <div style="text-align:center;background:rgba(255,255,255,0.15);border-radius:10px;padding:10px 16px;min-width:70px;">
+        <div style="font-size:24px;font-weight:600;line-height:1;">${n}</div>
+        <div style="font-size:11px;opacity:0.75;margin-top:3px;">${label}</div>
+      </div>
+    `).join('');
+  }
 }
 
 // ===== LIST =====
@@ -712,22 +724,35 @@ function renderList() {
   const filtered = db.equipment.filter(e => e.name.toLowerCase().includes(q) || (e.dept||'').toLowerCase().includes(q));
   const grid = document.getElementById('eq-grid');
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>설비가 없어요. 새 설비를 등록해보세요!</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>설비가 없어요. 새 설비를 등록해보세요!</p></div>`;
     return;
   }
   grid.innerHTML = filtered.map(eq => {
     const eqChecks = db.checks.filter(c => c.eqId === eq.id).sort((a,b) => b.date.localeCompare(a.date));
     const last = eqChecks[0];
     const hasWarn = last && last.machine !== '이상없음';
+    const noCheck = !last;
     return `
-      <div class="eq-card ${hasWarn?'status-warn':''}" onclick="openDetail('${eq.id}')">
-        <div class="eq-card-name">${eq.name}</div>
-        <div class="eq-card-model">${eq.model||'-'} · ${eq.serial||'-'}</div>
-        <div class="eq-card-meta">
-          <span class="badge badge-dept">${eq.dept||'미지정'}</span>
-          ${last ? `<span class="badge ${hasWarn?'badge-warn':'badge-ok'}">${hasWarn?'⚠ 이상':'✓ 정상'}</span>` : '<span class="badge" style="background:#f0f0f0;color:#999">점검전</span>'}
+      <div onclick="openDetail('${eq.id}')" style="
+        background:#fff;border:0.5px solid var(--border);border-radius:10px;
+        padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;
+        gap:16px;cursor:pointer;transition:all 0.2s;
+      " onmouseover="this.style.borderColor='#2a5298'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:4px;height:44px;background:${hasWarn?'#dc2626':noCheck?'#94a3b8':'#2a5298'};border-radius:4px;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:2px;">${eq.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${eq.model||''} ${eq.model&&eq.dept?'·':''} ${eq.dept||''} ${eq.location?'· '+eq.location:''}</div>
         </div>
-        <div class="eq-card-date">최근 점검: ${last ? last.date : '—'} ${last ? '· '+last.person : ''}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          ${last
+            ? `<span class="badge ${hasWarn?'badge-warn':'badge-ok'}">${hasWarn?'⚠ 이상':'✓ 정상'}</span>`
+            : `<span class="badge" style="background:#f0f0f0;color:#999;">점검전</span>`
+          }
+          <div style="font-size:11px;color:var(--text-muted);text-align:right;min-width:90px;">
+            ${last ? `<div>${last.date}</div><div>${last.person}</div>` : '—'}
+          </div>
+          <span style="color:var(--text-muted);font-size:18px;">›</span>
+        </div>
       </div>
     `;
   }).join('');
