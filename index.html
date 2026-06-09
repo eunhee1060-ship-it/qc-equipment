@@ -890,13 +890,10 @@ function openDetail(id) {
     </div>
   `;
 
-  // 모바일에서는 기기정보(사진) 탭을 기본으로, 컴퓨터에서는 점검이력 기본
-  const defaultTab = window.innerWidth <= 700 ? 3 : 0;
-  document.querySelectorAll('.inner-tab').forEach((t,i)=>t.classList.toggle('active', i===defaultTab));
-  document.querySelectorAll('.inner-content').forEach((c,i)=>c.classList.toggle('active', i===defaultTab));
+  document.querySelectorAll('.inner-tab').forEach((t,i)=>t.classList.toggle('active', i===0));
+  document.querySelectorAll('.inner-content').forEach((c,i)=>c.classList.toggle('active', i===0));
   showView('detail');
-  // 모바일에서 페이지 상단으로 스크롤
-  if (window.innerWidth <= 700) window.scrollTo(0, 0);
+  window.scrollTo(0, 0);
 }
 
 function renderCheckLog() {
