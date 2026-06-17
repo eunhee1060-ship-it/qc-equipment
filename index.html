@@ -860,7 +860,7 @@ function downloadLabel(eqId, name) {
     const qrCanvas = document.querySelector(`#qr-${eqId} canvas`);
     if (!qrCanvas) return;
 
-    const W = 340, H = 110;
+    const W = 480, H = 150;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -871,35 +871,35 @@ function downloadLabel(eqId, name) {
 
     // 파란 헤더 배경
     ctx.fillStyle = '#2a5298';
-    ctx.fillRect(0, 0, W, 22);
+    ctx.fillRect(0, 0, W, 30);
 
     // OHYOUNG 흰글씨
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px Arial';
-    ctx.fillText('OHYOUNG', 10, 15);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('OHYOUNG', 12, 21);
 
     // 파란 테두리
     ctx.strokeStyle = '#2a5298';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(0.75, 0.75, W - 1.5, H - 1.5);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
 
     // QR 코드
-    const qrSize = 76;
-    const qrX = 6, qrY = 26;
+    const qrSize = 106;
+    const qrX = 8, qrY = 34;
     ctx.fillStyle = '#fafafa';
-    ctx.fillRect(qrX, qrY, qrSize + 4, H - qrY - 4);
+    ctx.fillRect(qrX, qrY, qrSize + 4, H - qrY - 6);
     ctx.drawImage(qrCanvas, qrX + 2, qrY + 2, qrSize, qrSize);
 
     // QR 오른쪽 구분선
     ctx.strokeStyle = '#eeeeee';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(qrX + qrSize + 6, 26);
-    ctx.lineTo(qrX + qrSize + 6, H - 4);
+    ctx.moveTo(qrX + qrSize + 8, 34);
+    ctx.lineTo(qrX + qrSize + 8, H - 6);
     ctx.stroke();
 
     // 정보 표시
-    const infoX = qrX + qrSize + 14;
+    const infoX = qrX + qrSize + 18;
     const displayName = eq.model ? `${eq.name} (${eq.model})` : eq.name;
     const rows = [
       ['자 산 명', displayName],
@@ -909,22 +909,22 @@ function downloadLabel(eqId, name) {
     ];
 
     rows.forEach(([label, value], i) => {
-      const rowY = 32 + i * 19;
+      const rowY = 46 + i * 26;
       // 짝수 행 배경
       if (i % 2 === 1) {
         ctx.fillStyle = '#f7f9fc';
-        ctx.fillRect(infoX - 2, rowY - 12, W - infoX - 4, 17);
+        ctx.fillRect(infoX - 2, rowY - 15, W - infoX - 6, 22);
       }
       // 라벨
       ctx.fillStyle = '#999999';
-      ctx.font = '8px Arial';
+      ctx.font = '11px Arial';
       ctx.fillText(label, infoX, rowY);
       // 값
       ctx.fillStyle = '#1a1a1a';
-      ctx.font = 'bold 11px Arial';
-      const maxLen = 20;
+      ctx.font = 'bold 14px Arial';
+      const maxLen = 22;
       const truncated = value.length > maxLen ? value.slice(0, maxLen) + '...' : value;
-      ctx.fillText(truncated, infoX + 46, rowY);
+      ctx.fillText(truncated, infoX + 60, rowY);
     });
 
     const a = document.createElement('a');
