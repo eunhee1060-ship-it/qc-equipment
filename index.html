@@ -216,6 +216,7 @@
   /* ===== QR PRINT ===== */
   .qr-print-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
   .qr-print-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: white; box-shadow: var(--shadow-sm); transition: all 0.2s; }
+  .qr-print-card canvas, .qr-print-card img { width: 100px !important; height: 100px !important; }
   .qr-print-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
   .qr-print-name { font-size: 12px; font-weight: 700; text-align: center; }
   .qr-print-sub { font-size: 10px; color: var(--text-muted); text-align: center; }
@@ -513,7 +514,10 @@
         <div class="form-group"><label>시리얼 번호</label><input id="f-serial" type="text" placeholder="예: XR2024-001"></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>자산번호</label><input id="f-assetno" type="text" placeholder="예: OY-2024-001"></div>
         <div class="form-group"><label>구입일</label><input id="f-install" type="text" placeholder="예: 2024.03.15"></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label>위치</label><input id="f-location" type="text" placeholder="예: QC실 3번 선반"></div>
       </div>
       <div class="form-group">
@@ -800,12 +804,21 @@ function renderList() {
 function renderQR() {
   const grid = document.getElementById('qr-print-grid');
   if (db.equipment.length === 0) { grid.innerHTML = '<div class="empty-state"><div class="icon">📱</div><p>등록된 설비가 없어요.</p></div>'; return; }
+
   grid.innerHTML = db.equipment.map(eq => `
-    <div class="qr-print-card">
-      <div id="qr-${eq.id}"></div>
-      <div class="qr-print-name">${eq.name}</div>
-      <div class="qr-print-sub">${eq.dept||''}</div>
-      <button class="btn btn-secondary btn-sm" onclick="downloadQR('${eq.id}','${eq.name}')">⬇ 저장</button>
+    <div style="background:white;border:1px solid #ccc;border-radius:8px;display:flex;overflow:hidden;margin-bottom:12px;">
+      <div id="qr-${eq.id}" style="padding:12px;border-right:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0;">
+      </div>
+      <div style="padding:12px 14px;flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:600;color:#2a5298;letter-spacing:1.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid #ddd;">OHYOUNG</div>
+        <div style="display:flex;gap:4px;margin-bottom:4px;font-size:11px;"><span style="color:#888;min-width:52px;">자산명</span><span style="font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${eq.name}</span></div>
+        <div style="display:flex;gap:4px;margin-bottom:4px;font-size:11px;"><span style="color:#888;min-width:52px;">자산번호</span><span style="font-weight:600;color:#1a1a1a;">${eq.assetno||'-'}</span></div>
+        <div style="display:flex;gap:4px;margin-bottom:4px;font-size:11px;"><span style="color:#888;min-width:52px;">구입일</span><span style="font-weight:600;color:#1a1a1a;">${eq.install||'-'}</span></div>
+        <div style="display:flex;gap:4px;font-size:11px;"><span style="color:#888;min-width:52px;">담당부서</span><span style="font-weight:600;color:#1a1a1a;">${eq.dept||'-'}</span></div>
+      </div>
+      <div style="padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0;">
+        <button class="btn btn-secondary btn-sm" onclick="downloadLabel('${eq.id}','${eq.name}')">⬇ 저장</button>
+      </div>
     </div>
   `).join('');
 
@@ -819,15 +832,68 @@ function renderQR() {
   });
 }
 
-function downloadQR(id, name) {
+function downloadLabel(eqId, name) {
+  const eq = db.equipment.find(e => e.id === eqId);
+  if (!eq) return;
+
   setTimeout(() => {
-    const canvas = document.querySelector(`#qr-${id} canvas`);
-    if (!canvas) return;
+    const qrCanvas = document.querySelector(`#qr-${eqId} canvas`);
+    if (!qrCanvas) return;
+
+    const canvas = document.createElement('canvas');
+    const W = 420, H = 120;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 배경
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 테두리
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, W-1, H-1);
+
+    // QR 코드
+    ctx.drawImage(qrCanvas, 10, 10, 90, 90);
+
+    // 구분선
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(108, 10); ctx.lineTo(108, 110); ctx.stroke();
+
+    // OHYOUNG 텍스트
+    ctx.fillStyle = '#2a5298';
+    ctx.font = '600 10px Arial';
+    ctx.fillText('OHYOUNG', 118, 24);
+
+    // 구분선
+    ctx.strokeStyle = '#dddddd';
+    ctx.beginPath(); ctx.moveTo(118, 28); ctx.lineTo(W-10, 28); ctx.stroke();
+
+    // 정보
+    const rows = [
+      ['자산명', eq.name||'-'],
+      ['자산번호', eq.assetno||'-'],
+      ['구입일', eq.install||'-'],
+      ['담당부서', eq.dept||'-'],
+    ];
+    ctx.font = '10px Arial';
+    rows.forEach(([label, value], i) => {
+      const y = 44 + i * 18;
+      ctx.fillStyle = '#888888';
+      ctx.fillText(label, 118, y);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText(value.length > 20 ? value.slice(0,20)+'...' : value, 170, y);
+      ctx.font = '10px Arial';
+    });
+
     const a = document.createElement('a');
-    a.download = `QR_${name}.png`;
-    a.href = canvas.toDataURL();
+    a.download = `라벨_${name}.png`;
+    a.href = canvas.toDataURL('image/png');
     a.click();
-  }, 300);
+  }, 500);
 }
 
 // ===== DETAIL =====
@@ -962,7 +1028,7 @@ function convertDriveLink(url) {
 function openAddModal() {
   editingEqId = null;
   document.getElementById('modal-eq-title').textContent = '새 설비 등록';
-  ['name','model','dept','manager','maker','serial','location','manual','photo'].forEach(f => document.getElementById('f-'+f).value = '');
+  ['name','model','dept','manager','maker','serial','assetno','location','manual','photo'].forEach(f => document.getElementById('f-'+f).value = '');
   document.getElementById('f-install').value = '';
   openModal('modal-eq');
 }
@@ -978,6 +1044,7 @@ function openEditModal() {
   document.getElementById('f-manager').value = eq.manager||'';
   document.getElementById('f-maker').value = eq.maker||'';
   document.getElementById('f-serial').value = eq.serial||'';
+  document.getElementById('f-assetno').value = eq.assetno||'';
   document.getElementById('f-install').value = eq.install||'';
   document.getElementById('f-location').value = eq.location||'';
   document.getElementById('f-manual').value = eq.manual||'';
@@ -996,6 +1063,7 @@ async function saveEquipment() {
     manager: document.getElementById('f-manager').value.trim(),
     maker: document.getElementById('f-maker').value.trim(),
     serial: document.getElementById('f-serial').value.trim(),
+    assetno: document.getElementById('f-assetno').value.trim(),
     install: document.getElementById('f-install').value,
     location: document.getElementById('f-location').value.trim(),
     manual: document.getElementById('f-manual').value.trim(),
