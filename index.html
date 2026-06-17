@@ -810,9 +810,8 @@ function renderQR() {
     const displayName = eq.model ? `${eq.name} (${eq.model})` : eq.name;
     return `
     <div style="background:white;border:1.5px solid #2a5298;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(42,82,152,0.08);">
-      <div style="background:#2a5298;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="background:#2a5298;padding:6px 14px;display:flex;align-items:center;">
         <span style="color:white;font-size:13px;font-weight:700;letter-spacing:2px;">OHYOUNG</span>
-        <span style="color:rgba(255,255,255,0.6);font-size:10px;">설비 관리 시스템</span>
       </div>
       <div style="display:flex;align-items:center;">
         <div id="qr-${eq.id}" style="padding:8px;border-right:1px solid #eee;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fafafa;"></div>
@@ -861,53 +860,71 @@ function downloadLabel(eqId, name) {
     const qrCanvas = document.querySelector(`#qr-${eqId} canvas`);
     if (!qrCanvas) return;
 
+    const W = 340, H = 110;
     const canvas = document.createElement('canvas');
-    const W = 420, H = 120;
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    // 배경
+    // 전체 배경
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    // 테두리
-    ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, 0.5, W-1, H-1);
+    // 파란 헤더 배경
+    ctx.fillStyle = '#2a5298';
+    ctx.fillRect(0, 0, W, 22);
+
+    // OHYOUNG 흰글씨
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillText('OHYOUNG', 10, 15);
+
+    // 파란 테두리
+    ctx.strokeStyle = '#2a5298';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0.75, 0.75, W - 1.5, H - 1.5);
 
     // QR 코드
-    ctx.drawImage(qrCanvas, 10, 10, 90, 90);
+    const qrSize = 76;
+    const qrX = 6, qrY = 26;
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(qrX, qrY, qrSize + 4, H - qrY - 4);
+    ctx.drawImage(qrCanvas, qrX + 2, qrY + 2, qrSize, qrSize);
 
-    // 구분선
-    ctx.strokeStyle = '#dddddd';
+    // QR 오른쪽 구분선
+    ctx.strokeStyle = '#eeeeee';
     ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(108, 10); ctx.lineTo(108, 110); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(qrX + qrSize + 6, 26);
+    ctx.lineTo(qrX + qrSize + 6, H - 4);
+    ctx.stroke();
 
-    // OHYOUNG 텍스트
-    ctx.fillStyle = '#2a5298';
-    ctx.font = '600 10px Arial';
-    ctx.fillText('OHYOUNG', 118, 24);
-
-    // 구분선
-    ctx.strokeStyle = '#dddddd';
-    ctx.beginPath(); ctx.moveTo(118, 28); ctx.lineTo(W-10, 28); ctx.stroke();
-
-    // 정보
+    // 정보 표시
+    const infoX = qrX + qrSize + 14;
+    const displayName = eq.model ? `${eq.name} (${eq.model})` : eq.name;
     const rows = [
-      ['자산명', eq.name||'-'],
-      ['자산번호', eq.assetno||'-'],
-      ['구입일', eq.install||'-'],
-      ['담당부서', eq.dept||'-'],
+      ['자 산 명', displayName],
+      ['자산번호', eq.assetno || '-'],
+      ['구 입 일', eq.install || '-'],
+      ['담당부서', eq.dept || '-'],
     ];
-    ctx.font = '10px Arial';
+
     rows.forEach(([label, value], i) => {
-      const y = 44 + i * 18;
-      ctx.fillStyle = '#888888';
-      ctx.fillText(label, 118, y);
+      const rowY = 32 + i * 19;
+      // 짝수 행 배경
+      if (i % 2 === 1) {
+        ctx.fillStyle = '#f7f9fc';
+        ctx.fillRect(infoX - 2, rowY - 12, W - infoX - 4, 17);
+      }
+      // 라벨
+      ctx.fillStyle = '#999999';
+      ctx.font = '8px Arial';
+      ctx.fillText(label, infoX, rowY);
+      // 값
       ctx.fillStyle = '#1a1a1a';
-      ctx.font = 'bold 10px Arial';
-      ctx.fillText(value.length > 20 ? value.slice(0,20)+'...' : value, 170, y);
-      ctx.font = '10px Arial';
+      ctx.font = 'bold 11px Arial';
+      const maxLen = 20;
+      const truncated = value.length > maxLen ? value.slice(0, maxLen) + '...' : value;
+      ctx.fillText(truncated, infoX + 46, rowY);
     });
 
     const a = document.createElement('a');
