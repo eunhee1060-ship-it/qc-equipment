@@ -173,6 +173,12 @@
   input:focus, select:focus, textarea:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
   textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
   select { cursor: pointer; }
+  input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: auto; cursor: pointer; }
+  .clearable-wrap { position: relative; width: 100%; }
+  .clearable-wrap input { padding-right: 28px !important; }
+  .clear-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 2px 4px; border-radius: 50%; display: none; line-height: 1; }
+  .clearable-wrap input:not(:placeholder-shown) ~ .clear-btn { display: block; }
+  .clear-btn:hover { color: var(--text); }
 
   /* ===== DETAIL ===== */
   .detail-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 18px; box-shadow: var(--shadow); }
@@ -402,7 +408,7 @@
     <div class="toolbar-left">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input class="search-box" type="text" placeholder="설비명 검색..." oninput="renderList()" id="search-input">
+        <input class="search-box" type="search" placeholder="설비명 검색..." oninput="renderList()" id="search-input">
       </div>
     </div>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 새 설비 등록</button>
@@ -706,6 +712,22 @@ function cleanValue(v) {
   return v;
 }
 
+function addClearButtons() {
+  document.querySelectorAll('.modal-body input[type="text"], .modal-body input[type="date"]').forEach(input => {
+    if (input.closest('.clearable-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'clearable-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.className = 'clear-btn';
+    btn.type = 'button';
+    btn.innerHTML = '✕';
+    btn.onclick = () => { input.value = ''; input.focus(); input.dispatchEvent(new Event('input')); };
+    wrap.appendChild(btn);
+  });
+}
+
 async function init() {
   const params = new URLSearchParams(location.search);
   const eqId = params.get('eq');
@@ -719,6 +741,7 @@ async function init() {
     if (eq) { openDetail(eqId); return; }
   }
   showView('list');
+  addClearButtons();
 }
 
 // ===== VIEWS =====
@@ -1542,16 +1565,16 @@ function renderManualContent() {
   const renderDoc = (link, label) => {
     if (!link) return '';
     const fileId = extractDriveId(link);
-    const isPdf = link.toLowerCase().includes('.pdf') || (fileId && !link.toLowerCase().includes('.doc'));
-    if (fileId && isPdf) {
+    // 드라이브 링크면 무조건 iframe 미리보기 시도
+    if (fileId) {
       return `
-        <div style="margin-bottom:12px;">
+        <div style="margin-bottom:16px;">
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <span style="font-size:13px;font-weight:600;">📄 ${label}</span>
             <a href="${link}" target="_blank" class="btn btn-secondary btn-sm">🔗 새 탭에서 열기</a>
           </div>
-          <div style="width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
-            <iframe src="https://drive.google.com/file/d/${fileId}/preview#page=1&t=${Date.now()}"
+          <div style="width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-align:center;">
+            <iframe src="https://drive.google.com/file/d/${fileId}/preview"
               width="100%" height="520px"
               style="display:block;border:none;background:#ffffff;margin:0 auto;"
               allow="autoplay">
@@ -1643,7 +1666,7 @@ async function deleteEquipment(id) {
   renderStats();
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); addClearButtons(); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
