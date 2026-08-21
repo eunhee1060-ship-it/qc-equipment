@@ -454,14 +454,15 @@
 
 <!-- 설비 상세 -->
 <div class="view" id="view-detail">
-  <div style="margin-bottom:14px;">
+  <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
     <button class="btn btn-secondary btn-sm" onclick="showView('list')">← 목록으로</button>
+    <a href="https://ohyoung.c-live.kr/ohyoung/index.php" target="_blank" class="btn btn-sm" style="background:#dc2626;color:white;text-decoration:none;">🔧 수리의뢰</a>
   </div>
   <div class="detail-header" id="detail-header"></div>
   <div class="inner-tabs">
     <button class="inner-tab active" onclick="showInnerTab('checks',this)">📋 점검 이력</button>
     <button class="inner-tab" onclick="showInnerTab('calib',this)">🔬 검교정 이력</button>
-    <button class="inner-tab" onclick="showInnerTab('manual',this)">📖 사용법</button>
+    <button class="inner-tab" onclick="showInnerTab('manual',this)">📖 Manual</button>
     <button class="inner-tab" onclick="showInnerTab('info',this)">ℹ️ 기기 정보</button>
   </div>
   <div class="inner-content active" id="inner-checks">
@@ -479,7 +480,7 @@
     <div class="card" style="padding:0;overflow:hidden;"><div id="calib-log-container"></div></div>
   </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="section-title" style="flex:1;margin:0 16px 0 0;">사용법 / 주의사항</div>
+      <div class="section-title" style="flex:1;margin:0 16px 0 0;">Manual</div>
       <button class="btn btn-secondary btn-sm" onclick="openManualEditModal()">✏️ 수정</button>
     </div>
     <div class="card" id="manual-content-area"></div>
@@ -860,71 +861,64 @@ function downloadLabel(eqId, name) {
     const qrCanvas = document.querySelector(`#qr-${eqId} canvas`);
     if (!qrCanvas) return;
 
-    const W = 480, H = 150;
+    const W = 260, H = 90;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    // 전체 배경
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    // 파란 헤더 배경
+    // 파란 헤더
     ctx.fillStyle = '#2a5298';
-    ctx.fillRect(0, 0, W, 30);
-
-    // OHYOUNG 흰글씨
+    ctx.fillRect(0, 0, W, 18);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('OHYOUNG', 12, 21);
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('OHYOUNG', 8, 13);
 
-    // 파란 테두리
+    // 테두리
     ctx.strokeStyle = '#2a5298';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, W - 2, H - 2);
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0.75, 0.75, W - 1.5, H - 1.5);
 
-    // QR 코드
-    const qrSize = 106;
-    const qrX = 8, qrY = 34;
+    // QR
+    const qrSize = 62;
+    const qrX = 5, qrY = 22;
     ctx.fillStyle = '#fafafa';
-    ctx.fillRect(qrX, qrY, qrSize + 4, H - qrY - 6);
+    ctx.fillRect(qrX, qrY, qrSize + 4, H - qrY - 4);
     ctx.drawImage(qrCanvas, qrX + 2, qrY + 2, qrSize, qrSize);
 
-    // QR 오른쪽 구분선
+    // 구분선
     ctx.strokeStyle = '#eeeeee';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(qrX + qrSize + 8, 34);
-    ctx.lineTo(qrX + qrSize + 8, H - 6);
+    ctx.moveTo(qrX + qrSize + 6, 22);
+    ctx.lineTo(qrX + qrSize + 6, H - 4);
     ctx.stroke();
 
-    // 정보 표시
-    const infoX = qrX + qrSize + 18;
+    // 정보
+    const infoX = qrX + qrSize + 10;
     const displayName = eq.model ? `${eq.name} (${eq.model})` : eq.name;
     const rows = [
-      ['자 산 명', displayName],
+      ['자산명', displayName],
       ['자산번호', eq.assetno || '-'],
-      ['구 입 일', eq.install || '-'],
+      ['구입일', eq.install || '-'],
       ['담당부서', eq.dept || '-'],
     ];
 
     rows.forEach(([label, value], i) => {
-      const rowY = 46 + i * 26;
-      // 짝수 행 배경
+      const rowY = 28 + i * 15;
       if (i % 2 === 1) {
         ctx.fillStyle = '#f7f9fc';
-        ctx.fillRect(infoX - 2, rowY - 15, W - infoX - 6, 22);
+        ctx.fillRect(infoX - 2, rowY - 11, W - infoX - 3, 14);
       }
-      // 라벨
       ctx.fillStyle = '#999999';
-      ctx.font = '11px Arial';
+      ctx.font = '9px Arial';
       ctx.fillText(label, infoX, rowY);
-      // 값
       ctx.fillStyle = '#1a1a1a';
-      ctx.font = 'bold 14px Arial';
-      const maxLen = 22;
-      const truncated = value.length > maxLen ? value.slice(0, maxLen) + '...' : value;
-      ctx.fillText(truncated, infoX + 60, rowY);
+      ctx.font = 'bold 11px Arial';
+      const truncated = value.length > 18 ? value.slice(0, 18) + '...' : value;
+      ctx.fillText(truncated, infoX + 38, rowY);
     });
 
     const a = document.createElement('a');
