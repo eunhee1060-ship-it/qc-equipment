@@ -479,6 +479,7 @@
     </div>
     <div class="card" style="padding:0;overflow:hidden;"><div id="calib-log-container"></div></div>
   </div>
+  <div class="inner-content" id="inner-manual">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="section-title" style="flex:1;margin:0 16px 0 0;">Manual</div>
       <button class="btn btn-secondary btn-sm" onclick="openManualEditModal()">✏️ 수정</button>
@@ -648,11 +649,15 @@
         📌 구글 드라이브에 PDF 또는 워드 파일 업로드 → 우클릭 → 공유 → "링크가 있는 모든 사용자" → 링크 복사 후 붙여넣기
       </div>
       <div class="form-group">
-        <label>문서 링크 (PDF / 워드)</label>
+        <label>문서 링크 1 (PDF / 워드)</label>
         <input id="m-filelink" type="text" placeholder="구글 드라이브 공유 링크 붙여넣기">
       </div>
       <div class="form-group">
-        <label>동영상 링크 (구글 드라이브 또는 유튜브)</label>
+        <label>문서 링크 2 (PDF / 워드)</label>
+        <input id="m-filelink2" type="text" placeholder="구글 드라이브 공유 링크 붙여넣기">
+      </div>
+      <div class="form-group">
+        <label>동영상 링크 1 (구글 드라이브 또는 유튜브)</label>
         <input id="m-videolink" type="text" placeholder="동영상 공유 링크 붙여넣기">
       </div>
       <div class="form-group">
@@ -1502,6 +1507,7 @@ async function deleteCalib(id) {
 function openManualEditModal() {
   const eq = db.equipment.find(e => e.id === currentEqId);
   document.getElementById('m-filelink').value = eq?.manualLink||'';
+  document.getElementById('m-filelink2').value = eq?.manualLink2||'';
   document.getElementById('m-videolink').value = eq?.videoLink||'';
   document.getElementById('m-content').value = eq?.manual||'';
   openModal('modal-manual');
@@ -1513,11 +1519,13 @@ async function saveManual() {
   const eq = db.equipment.find(e => e.id === currentEqId);
   const manual = document.getElementById('m-content').value;
   const manualLink = document.getElementById('m-filelink').value.trim();
+  const manualLink2 = document.getElementById('m-filelink2').value.trim();
   const videoLink = document.getElementById('m-videolink').value.trim();
-  await apiPost({ action: 'editManual', ...eq, manual, manualLink, videoLink });
+  await apiPost({ action: 'editManual', ...eq, manual, manualLink, manualLink2, videoLink });
   const idx = db.equipment.findIndex(e => e.id === currentEqId);
   db.equipment[idx].manual = manual;
   db.equipment[idx].manualLink = manualLink;
+  db.equipment[idx].manualLink2 = manualLink2;
   db.equipment[idx].videoLink = videoLink;
   renderManualContent();
   btn.textContent = '저장'; btn.disabled = false;
@@ -1530,40 +1538,37 @@ function renderManualContent() {
   if (!area) return;
   let html = '';
 
-  if (eq?.manualLink) {
-    const link = eq.manualLink.trim();
+  // 문서 링크 렌더링 함수
+  const renderDoc = (link, label) => {
+    if (!link) return '';
     const fileId = extractDriveId(link);
     const isPdf = link.toLowerCase().includes('.pdf') || (fileId && !link.toLowerCase().includes('.doc'));
-
     if (fileId && isPdf) {
-      // PDF 미리보기
-      html += `
-        <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
-          <span style="font-size:13px;font-weight:600;">📄 첨부 문서</span>
-          <a href="${link}" target="_blank" class="btn btn-secondary btn-sm">🔗 새 탭에서 열기</a>
-        </div>
-        <div style="width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-align:center;">
-          <iframe src="https://drive.google.com/file/d/${fileId}/preview"
-            width="100%" height="520px"
-            style="display:block;border:none;background:#ffffff;margin:0 auto;"
-            allow="autoplay">
-          </iframe>
-        </div>
-      `;
+      return `
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:600;">📄 ${label}</span>
+            <a href="${link}" target="_blank" class="btn btn-secondary btn-sm">🔗 새 탭에서 열기</a>
+          </div>
+          <div style="width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+            <iframe src="https://drive.google.com/file/d/${fileId}/preview" width="100%" height="520px" style="display:block;border:none;background:#ffffff;margin:0 auto;" allow="autoplay"></iframe>
+          </div>
+        </div>`;
     } else {
-      // 워드 등 미리보기 안 되는 파일
-      html += `
+      return `
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;margin-bottom:12px;">
           <div style="font-size:32px;margin-bottom:8px;">📎</div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">첨부 문서</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">${label}</div>
           <a href="${link}" target="_blank" class="btn btn-primary">🔗 문서 열기</a>
-        </div>
-      `;
+        </div>`;
     }
-  }
+  };
+
+  html += renderDoc(eq?.manualLink, '문서 1');
+  html += renderDoc(eq?.manualLink2, '문서 2');
 
   if (eq?.manual) {
-    html += `<div class="manual-box" style="margin-top:${eq?.manualLink?'16px':'0'}">${eq.manual.replace(/\n/g,'<br>')}</div>`;
+    html += `<div class="manual-box" style="margin-top:${eq?.manualLink||eq?.manualLink2?'16px':'0'}">${eq.manual.replace(/\n/g,'<br>')}</div>`;
   }
 
   // 동영상
@@ -1582,12 +1587,11 @@ function renderManualContent() {
         <div style="margin-top:16px;">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🎬 동영상</div>
           <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);">${videoHtml}</div>
-        </div>
-      `;
+        </div>`;
     }
   }
 
-  if (!eq?.manualLink && !eq?.manual && !eq?.videoLink) {
+  if (!eq?.manualLink && !eq?.manualLink2 && !eq?.manual && !eq?.videoLink) {
     html = '<div style="color:var(--text-muted);font-size:13px;">사용법이 아직 등록되지 않았어요.</div>';
   }
 
